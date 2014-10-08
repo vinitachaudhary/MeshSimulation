@@ -32,7 +32,24 @@
 #include <GlobalNodeList.h>
 #include "SimpleMeshMessage_m.h"
 #include <DenaCastOverlay.h>
+#include <queue>
 
+//=================edit start by vinita=========================
+struct neighborPowerMap {
+	TransportAddress tAddress; 	// Transport address of the neighbor
+	double sourceToEndDelay;	// Source-to-end delay of the node through this neighbor.
+	double residualUpBandwidth;	// Residual Upload Bandwidth of this neighbor.
+	double power;				// Power of this neighbor.
+};
+
+// Class to compare neighborPowerMap by power.
+class compareNeighbourPowerMap {
+public :
+	bool operator()(neighborPowerMap N1, neighborPowerMap N2) {
+		return N1.power<N2.power;
+	}
+};
+//=================edit end by vinita==========================
 
 class SimpleMesh : public DenaCastOverlay
 {
@@ -48,6 +65,14 @@ protected:
     bool serverGradualNeighboring; /**< true if gradual neighbor is required for source node*/
     TransportAddress trackerAddress; /**< Transport address of tracker node */
     std::map <TransportAddress,double> neighborTimeOut; /**< */
+
+    //===========edited by vinita===================
+    //std::map <TransportAddress,double> neighborDelayBuffer;
+    //std::map <TransportAddress,double> neighborResidualUpBandwidthBuffer;
+
+    std::priority_queue<neighborPowerMap, std::vector<neighborPowerMap>, compareNeighbourPowerMap> neighborPowerBuffer;
+    int numOfPowerResponsesExpected;
+    //simtime_t powerRequestTime;
     /**
      * Register node in the tracker
      */
@@ -66,7 +91,8 @@ protected:
     cMessage* meshJoinRequestTimer; /**< self message for scheduling neighboring*/
     cMessage* remainNotificationTimer; /**< self message for scheduling send notification to server*/
     cMessage* serverNeighborTimer; /**< for gradual neighboring this self message plan for this job */
-
+    //=============edited by vinita===================
+    cMessage* neighborSelectionTimer;	// Time when the node should start selecting/rejecting neighbors by power.
 
     // statistics
 	uint32_t stat_TotalUpBandwidthUsage;

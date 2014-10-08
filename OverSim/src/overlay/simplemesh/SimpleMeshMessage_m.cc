@@ -39,6 +39,8 @@ EXECUTE_ON_STARTUP(
     e->insert(JOIN_DENY, "JOIN_DENY");
     e->insert(DISCONNECT, "DISCONNECT");
     e->insert(ALIVE, "ALIVE");
+    e->insert(POWER_REQUEST, "POWER_REQUEST");
+    e->insert(POWER_RESPONSE, "POWER_RESPONSE");
 );
 
 Register_Class(SimpleMeshMessage);

@@ -43,6 +43,8 @@ enum SIMPLEMESHCommand
     JOIN_DENY = 3;    // JOIN_DENY-Message
     DISCONNECT = 4;    // DISCONNECT-Message
     ALIVE = 5;
+    POWER_REQUEST = 6;	// POWER_REQUEST -Message
+    POWER_RESPONSE = 7;	// POWER_RESPONSE -Message
 }
 //	join message in SimpleMesh 
 //  @author Behnam Ahmadifar, Yasser Seyyedi

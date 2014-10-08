@@ -35,6 +35,8 @@ static const int SIMPLEMESHCOMMAND_L = 8;
  *     JOIN_DENY = 3;    
  *     DISCONNECT = 4;    
  *     ALIVE = 5;
+ *     POWER_REQUEST = 6;	
+ *     POWER_RESPONSE = 7;	
  * }
  * </pre>
  */
@@ -44,7 +46,9 @@ enum SIMPLEMESHCommand {
     JOIN_ACK = 2,
     JOIN_DENY = 3,
     DISCONNECT = 4,
-    ALIVE = 5
+    ALIVE = 5,
+    POWER_REQUEST = 6,
+    POWER_RESPONSE = 7
 };
 
 /**

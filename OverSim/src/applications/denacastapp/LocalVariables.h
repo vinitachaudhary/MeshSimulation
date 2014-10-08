@@ -107,7 +107,8 @@ public:
 	 */
 	void setSourceToEndDelay(double SED);
 
-	std::map <TransportAddress,double> neighbourBandwidthAllotment;		// Maps neighbors to the upload bandwidth this node allots to them.
+	std::map <TransportAddress,double> neighbourUpBandwidthAllotment;		// Maps neighbors to the upload bandwidth this node allots to them.
+	std::map <TransportAddress,double> neighbourDownBandwidthReceived;		// Maps neighbors to the download bandwidth this node receives from them.
 	std::map <TransportAddress,double> neighbourDelay;					// Maps neighbors to the source-to-end delay of this node through that neighbor.
 
 	//==========================edit end by vinita======================//
