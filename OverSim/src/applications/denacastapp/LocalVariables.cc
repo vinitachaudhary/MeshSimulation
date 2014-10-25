@@ -44,7 +44,7 @@ void LocalVariables::initialize()
     hostBufferMap->setValues(bufferSize);
     videoBuffer->updateBufferMap(hostBufferMap);
     //=============edited by vinita=================
-    sourceToEndDelay=0;
+    //sourceToEndDelay=0;
 }
 void LocalVariables::updateLocalBufferMap()
 {
@@ -68,12 +68,24 @@ void LocalVariables::addToLateArivalLoss(double LateArivalLoss)
 }
 
 //======================edited by vinita============================//
-void LocalVariables::setResidualUpBandwidth(double RUB)
+double LocalVariables::getResidualUpBandwidth()
 {
-	residualUpBandwidth = RUB;
+	std::map <TransportAddress,double>::iterator it;
+	double sumUpBandwidth=0;
+
+	for (it=neighbourUpBandwidthAllotment.begin(); it!=neighbourUpBandwidthAllotment.end(); ++it) {
+		sumUpBandwidth+=it->second;
+	}
+	return upBandwidth-sumUpBandwidth;
 }
 
-void LocalVariables::setSourceToEndDelay(double SED)
+double LocalVariables::getSourceToEndDelay()
 {
-	sourceToEndDelay=SED;
+	std::map <TransportAddress,double>::iterator it;
+	double maxSED=0;
+
+	for (it=neighbourDelay.begin(); it!=neighbourDelay.end(); ++it) {
+		maxSED=std::max(maxSED,it->second);
+	}
+	return maxSED;
 }

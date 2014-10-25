@@ -43,8 +43,12 @@ enum SIMPLEMESHCommand
     JOIN_DENY = 3;    // JOIN_DENY-Message
     DISCONNECT = 4;    // DISCONNECT-Message
     ALIVE = 5;
-    POWER_REQUEST = 6;	// POWER_REQUEST -Message
-    POWER_RESPONSE = 7;	// POWER_RESPONSE -Message
+    MOVE_REQUEST = 6;
+    MOVE_GRANT = 7;
+    MOVE_ACCEPT = 8;
+    ACCEPT_ACK = 9;
+    REPLACE = 10;
+    REPLACE_ACK = 11;
 }
 //	join message in SimpleMesh 
 //  @author Behnam Ahmadifar, Yasser Seyyedi
@@ -53,4 +57,18 @@ packet SimpleMeshMessage extends BaseOverlayMessage
 {
 	int command @enum(SIMPLEMESHCommand);
 	TransportAddress srcNode;  // address of the node that sent the message
+}
+// edited by vinita
+packet SimpleMeshParentListMessage extends BaseOverlayMessage
+{
+	int command @enum(SIMPLEMESHCommand);
+	TransportAddress srcNode;  // address of the node that sent the message
+	TransportAddress parents[];	//Parents' list sent by the node to be replaced by high bandwith node.
+}
+
+packet SimpleMeshReplaceMessage extends BaseOverlayMessage
+{
+	int command @enum(SIMPLEMESHCommand);
+	TransportAddress srcNode;  // address of the node that sent the message
+	TransportAddress nodeToBeReplaced;	//address of the node to be replaced when high bandwidth node moves closer to source.
 }

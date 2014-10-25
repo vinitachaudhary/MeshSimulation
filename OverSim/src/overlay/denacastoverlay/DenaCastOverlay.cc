@@ -347,8 +347,6 @@ void DenaCastOverlay::setBandwidth()
 	}
 	LV->setUpBandwidth(upBandwidth);
 	LV->setDownBandwidth(downBandwidth);
-	//========edited by vinita============
-	LV->setResidualUpBandwidth(upBandwidth);
 }
 
 

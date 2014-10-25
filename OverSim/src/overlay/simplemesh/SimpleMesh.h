@@ -49,6 +49,7 @@ public :
 		return N1.power<N2.power;
 	}
 };
+
 //=================edit end by vinita==========================
 
 class SimpleMesh : public DenaCastOverlay
@@ -67,12 +68,12 @@ protected:
     std::map <TransportAddress,double> neighborTimeOut; /**< */
 
     //===========edited by vinita===================
-    //std::map <TransportAddress,double> neighborDelayBuffer;
-    //std::map <TransportAddress,double> neighborResidualUpBandwidthBuffer;
-
+    /*	Priority queue to hold neighbors along with their power, so as to choose neighbor with high power. */
     std::priority_queue<neighborPowerMap, std::vector<neighborPowerMap>, compareNeighbourPowerMap> neighborPowerBuffer;
-    int numOfPowerResponsesExpected;
-    //simtime_t powerRequestTime;
+    std::map <TransportAddress,double> neighborSEDBuffer;	// Buffer to store source-to-end delay of nodes which grant move request
+    int numOfPowerResponsesExpected;			// Number to power requests sent by node.
+    std::map <TransportAddress,double> oldParents;		// Stores the parents of a node before it moves.
+
     /**
      * Register node in the tracker
      */
@@ -93,6 +94,9 @@ protected:
     cMessage* serverNeighborTimer; /**< for gradual neighboring this self message plan for this job */
     //=============edited by vinita===================
     cMessage* neighborSelectionTimer;	// Time when the node should start selecting/rejecting neighbors by power.
+    cMessage* moveRequestTimer;		// self message for sending out move Request messages.
+    cMessage* moveAcceptTimer;		// self message for accepting move Grant messages.
+    cMessage* parentReplaceTimer;	// self message to disconnect from all the old parents.
 
     // statistics
 	uint32_t stat_TotalUpBandwidthUsage;

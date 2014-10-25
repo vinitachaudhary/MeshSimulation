@@ -89,23 +89,18 @@ public:
 	 *
 	 * @return residual upload bandwidth of this node
 	 */
-	double getResidualUpBandwidth(){return residualUpBandwidth;}
-
-	/**
-	 * set residual upload bandwidth of the node
-	 */
-	void setResidualUpBandwidth(double RUB);
+	double getResidualUpBandwidth();
 
 	/**
 	 * gives out current node source-to-end delay
 	 *
 	 * @return source-to-end delay of this node
 	 */
-	double getSourceToEndDelay(){return sourceToEndDelay;}
+	double getSourceToEndDelay();
 	/**
 	 * set source to end delay of the node
 	 */
-	void setSourceToEndDelay(double SED);
+	//void setSourceToEndDelay();
 
 	std::map <TransportAddress,double> neighbourUpBandwidthAllotment;		// Maps neighbors to the upload bandwidth this node allots to them.
 	std::map <TransportAddress,double> neighbourDownBandwidthReceived;		// Maps neighbors to the download bandwidth this node receives from them.
@@ -129,8 +124,8 @@ protected:
 	double stat_availability_RateControlLoss; /**< statistics that is all losses due to availability or rate control */
 
 	//=================edited by Vinita====================================//
-	double residualUpBandwidth;		// Residual Upload Bandwidth of Node
-	double sourceToEndDelay; 		// Source to end delay of node with server - max of source to end delay in all spanning trees.
+	//double residualUpBandwidth;		// Residual Upload Bandwidth of Node
+	//double sourceToEndDelay; 		// Source to end delay of node with server - max of source to end delay in all spanning trees.
 };
 
 #endif /* LOCALVARIABLES_H_ */
