@@ -65,7 +65,6 @@ protected:
     bool isRegistered; /**< if this node registered in the tracker */
     bool serverGradualNeighboring; /**< true if gradual neighbor is required for source node*/
     TransportAddress trackerAddress; /**< Transport address of tracker node */
-    std::map <TransportAddress,double> neighborTimeOut; /**< */
 
     //===========edited by vinita===================
     /*	Priority queue to hold neighbors along with their power, so as to choose neighbor with high power. */
@@ -73,6 +72,7 @@ protected:
     std::map <TransportAddress,double> neighborSEDBuffer;	// Buffer to store source-to-end delay of nodes which grant move request
     int numOfPowerResponsesExpected;			// Number to power requests sent by node.
     std::map <TransportAddress,double> oldParents;		// Stores the parents of a node before it moves.
+    std::map <TransportAddress,double> neighborTimeOut; // Stores TimeOut of neighbors for Keep-Alive.
 
     /**
      * Register node in the tracker
@@ -97,6 +97,8 @@ protected:
     cMessage* moveRequestTimer;		// self message for sending out move Request messages.
     cMessage* moveAcceptTimer;		// self message for accepting move Grant messages.
     cMessage* parentReplaceTimer;	// self message to disconnect from all the old parents.
+    cMessage* checkNeighborTimer;	// self message to check for alive neighbors and remove neighbors which left.
+    cMessage* aliveNotificationTimer; // self message to send out alive messages to neighbors.
 
     // statistics
 	uint32_t stat_TotalUpBandwidthUsage;

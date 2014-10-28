@@ -86,7 +86,11 @@ void SimpleMesh::joinOverlay()
 {
 	trackerAddress  = *globalNodeList->getRandomAliveNode(1);
 	remainNotificationTimer = new cMessage ("remainNotificationTimer");
+	aliveNotificationTimer = new cMessage ("aliveNotificationTimer");
 	scheduleAt(simTime()+neighborNotificationPeriod,remainNotificationTimer);
+	scheduleAt(simTime()+2,aliveNotificationTimer);
+	checkNeighborTimer = new cMessage ("checkNeighborTimer");
+	scheduleAt(simTime()+3,checkNeighborTimer);
 	std::stringstream ttString;
 	ttString << thisNode;
 	getParentModule()->getParentModule()->getDisplayString().setTagArg("tt",0,ttString.str().c_str());
@@ -296,6 +300,58 @@ void SimpleMesh::handleTimerEvent(cMessage* msg)
 				sendMessageToUDP(it->first,disconnect);
 			}
 			oldParents.clear();
+		}
+	}
+	else if (msg==aliveNotificationTimer) {
+		std::map <TransportAddress,double>::iterator it;
+		SimpleMeshMessage* alive = new SimpleMeshMessage("alive");
+		alive->setCommand(ALIVE);
+		alive->setSrcNode(thisNode);
+		alive->setBitLength(SIMPLEMESHMESSAGE_L(msg));
+
+		alive->setTimestamp();
+		/*cMsgPar *residualBwMsg= new cMsgPar("residualUpBandwidth");
+		residualBwMsg->setDoubleValue(LV->getResidualUpBandwidth());
+		alive->addPar(residualBwMsg);*/
+
+		cMsgPar *SourceEndDelayMsg= new cMsgPar("SourceToEndDelay");
+		if(isSource)
+			SourceEndDelayMsg->setDoubleValue(0.0);
+		else {
+			SourceEndDelayMsg->setDoubleValue(LV->getSourceToEndDelay());
+		}
+		alive->addPar(SourceEndDelayMsg);
+
+		for (it=LV->neighbourUpBandwidthAllotment.begin(); it!=LV->neighbourUpBandwidthAllotment.end(); ++it) {
+			sendMessageToUDP(it->first,alive->dup());
+		}
+		for (it=LV->neighbourDownBandwidthReceived.begin(); it!=LV->neighbourDownBandwidthReceived.end(); ++it) {
+			if (LV->neighbourUpBandwidthAllotment.find(it->first)==LV->neighbourUpBandwidthAllotment.end())
+				sendMessageToUDP(it->first,alive->dup());
+		}
+
+		delete alive;
+	}
+	else if (msg == checkNeighborTimer) {
+		std::map <TransportAddress,double>::iterator it, tempIt;
+		it=neighborTimeOut.begin();
+
+		while (it != neighborTimeOut.end()) {
+			if (it->second < simTime().dbl()-4) {
+				tempIt=it;
+				++it;
+				LV->neighbourUpBandwidthAllotment.erase(tempIt->first);
+				if (LV->neighbourDownBandwidthReceived.find(tempIt->first) != LV->neighbourDownBandwidthReceived.end()) {
+					LV->neighbourDownBandwidthReceived.erase(tempIt->first);
+					LV->neighbourDelay.erase(tempIt->first);
+					cancelEvent(meshJoinRequestTimer);
+					scheduleAt(simTime(),meshJoinRequestTimer);
+				}
+				deleteOverlayNeighborArrow(tempIt->first);
+				neighborTimeOut.erase(tempIt);
+			}
+			else
+				++it;
 		}
 	}
 	else
@@ -514,6 +570,14 @@ void SimpleMesh::handleUDPMessage(BaseOverlayMessage* msg)
 				/*}
 				else
 					disconnectProcess(simpleMeshmsg->getSrcNode());*/
+			}
+		}
+		else if (simpleMeshmsg->getCommand() == ALIVE) {
+			neighborTimeOut[simpleMeshmsg->getSrcNode()]=simTime().dbl();
+
+			if (LV->neighbourDelay.find(simpleMeshmsg->getSrcNode()) != LV->neighbourDelay.end()) {
+				LV->neighbourDelay[simpleMeshmsg->getSrcNode()]=simpleMeshmsg->par("SourceToEndDelay").doubleValue()+
+						((simTime()-simpleMeshmsg->getTimestamp()).dbl());
 			}
 		}
 		else if (simpleMeshmsg->getCommand() == MOVE_REQUEST) {
@@ -786,6 +850,8 @@ void SimpleMesh::disconnectProcess(TransportAddress Node)
 }
 void SimpleMesh::finishOverlay()
 {
+	cancelAndDelete(checkNeighborTimer);
+	cancelAndDelete(aliveNotificationTimer);
 	if(!isSource) {
     	cancelAndDelete(meshJoinRequestTimer);
     	cancelAndDelete(neighborSelectionTimer);

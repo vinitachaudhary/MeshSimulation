@@ -104,7 +104,7 @@ void CDNP2PTracker::handleUDPMessage(BaseOverlayMessage* msg)
 					nodeIt->second.timeOut =  simTime().dbl();
 					break;
 				}
-//			checkPeersTimOuts();
+			checkPeersTimOuts();
 		}
 		delete trackerMsg;
 	}
@@ -227,16 +227,20 @@ void CDNP2PTracker::SetServerNumber(TransportAddress& node)
 }
 void CDNP2PTracker::checkPeersTimOuts()
 {
-	std::multimap <int,nodeInfo>::iterator nodeIt = peerList.begin();
-	for(nodeIt = peerList.begin() ; nodeIt != peerList.end() ; nodeIt++)
+	std::multimap <int,nodeInfo>::iterator nodeIt, tempIt;
+	nodeIt = peerList.begin();
+	while (nodeIt != peerList.end())
 	{
 		if(simTime() - nodeIt->second.timeOut > 10)
 		{
-			peerList.erase(nodeIt);
-			peerServers.erase(nodeIt->second.tAddress);
-			std::cout << "node: " << nodeIt->second.tAddress << "  timeOut: " << simTime() - nodeIt->second.timeOut << std::endl;
+			tempIt=nodeIt;
+			++nodeIt;
+			//std::cout << "node: " << nodeIt->second.tAddress << "  timeOut: " << simTime() - nodeIt->second.timeOut << std::endl;
+			peerServers.erase(tempIt->second.tAddress);
+			peerList.erase(tempIt);
 			break;
 		}
-
+		else
+			++nodeIt;
 	}
 }
