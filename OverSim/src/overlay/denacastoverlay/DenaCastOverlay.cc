@@ -76,8 +76,11 @@ void DenaCastOverlay::handleAppMessage(cMessage* msg)
 			bufferMapExchangeStart = true;
 			firstBufferMapSending = simTime().dbl();
 		}
-		for (unsigned int i=0 ; i!=LV->neighbors.size(); i++)
-			sendMessageToUDP(LV->neighbors[i], denaCastOvelayMsg->dup());
+		/*for (unsigned int i=0 ; i!=LV->neighbors.size(); i++)
+			sendMessageToUDP(LV->neighbors[i], denaCastOvelayMsg->dup());*/
+		std::map <TransportAddress,double>::iterator it;
+		for (it=LV->neighbourUpBandwidthAllotment.begin() ; it!=LV->neighbourUpBandwidthAllotment.end(); it++)
+			sendMessageToUDP(it->first, denaCastOvelayMsg->dup());
 		delete denaCastOvelayMsg;
 	}
 	else if (dynamic_cast<VideoMessage*>(msg) != NULL)

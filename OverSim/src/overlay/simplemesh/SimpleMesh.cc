@@ -114,11 +114,13 @@ void SimpleMesh::handleTimerEvent(cMessage* msg)
 {
 	if(msg == meshJoinRequestTimer)
 	{
-		if(LV->neighbors.size() < activeNeighbors)
+		//if(LV->neighbors.size() < activeNeighbors)
+		if (LV->neighbourDownBandwidthReceived.size() < activeNeighbors)
 		{
 			DenaCastTrackerMessage* NeighborReq = new DenaCastTrackerMessage("NeighborReq");
 			NeighborReq->setCommand(NEIGHBOR_REQUEST);
-			NeighborReq->setNeighborSize(activeNeighbors - LV->neighbors.size());
+			//NeighborReq->setNeighborSize(activeNeighbors - LV->neighbors.size());
+			NeighborReq->setNeighborSize(activeNeighbors - LV->neighbourDownBandwidthReceived.size());
 			NeighborReq->setSrcNode(thisNode);
 			NeighborReq->setIsServer(false);
 
@@ -132,7 +134,9 @@ void SimpleMesh::handleTimerEvent(cMessage* msg)
 	{
 		DenaCastTrackerMessage* remainNotification = new DenaCastTrackerMessage("remainNotification");
 		remainNotification->setCommand(REMAIN_NEIGHBOR);
-		remainNotification->setRemainNeighbor(activeNeighbors - LV->neighbors.size() + passiveNeighbors);
+		//remainNotification->setRemainNeighbor(activeNeighbors - LV->neighbors.size() + passiveNeighbors);
+		remainNotification->setRemainNeighbor(activeNeighbors - LV->neighbourDownBandwidthReceived.size() -
+				LV->neighbourUpBandwidthAllotment.size() + passiveNeighbors);
 		remainNotification->setSrcNode(thisNode);
 		sendMessageToUDP(trackerAddress,remainNotification);
 		scheduleAt(simTime()+2,remainNotificationTimer);
@@ -176,7 +180,7 @@ void SimpleMesh::handleTimerEvent(cMessage* msg)
 
 			if (neighbourPower.power>0) {
 				bandwidthUsed=std::min(neighbourPower.residualUpBandwidth,videoAverageRate*1024-bandwidthRequested);
-				LV->neighbors.push_back(neighbourPower.tAddress);
+				//LV->neighbors.push_back(neighbourPower.tAddress);
 				LV->neighbourDownBandwidthReceived[neighbourPower.tAddress]=bandwidthUsed;
 				LV->neighbourDelay[neighbourPower.tAddress]=neighbourPower.sourceToEndDelay;
 				//LV->setSourceToEndDelay();
@@ -222,7 +226,7 @@ void SimpleMesh::handleTimerEvent(cMessage* msg)
 	}
 
 	else if(msg==moveRequestTimer) {
-		if (LV->getResidualUpBandwidth()>videoAverageRate*1000) {
+		if (LV->getResidualUpBandwidth()>videoAverageRate*1024) {
 			SimpleMeshMessage* moveRequest = new SimpleMeshMessage("moveRequest");
 			moveRequest->setCommand(MOVE_REQUEST);
 			moveRequest->setSrcNode(thisNode);
@@ -244,10 +248,10 @@ void SimpleMesh::handleTimerEvent(cMessage* msg)
 			scheduleAt(simTime()+1,moveAcceptTimer);
 		}
 		else
-			scheduleAt(simTime()+20,moveRequestTimer);
+			scheduleAt(simTime()+10,moveRequestTimer);
 	}
 	else if (msg==moveAcceptTimer) {
-		if (LV->getResidualUpBandwidth()>videoAverageRate*1000 && !neighborSEDBuffer.empty()) {
+		if (LV->getResidualUpBandwidth()>videoAverageRate*1024 && !neighborSEDBuffer.empty()) {
 			std::map <TransportAddress,double>::iterator it, minIt;
 
 			minIt=neighborSEDBuffer.begin();
@@ -256,8 +260,8 @@ void SimpleMesh::handleTimerEvent(cMessage* msg)
 					minIt=it;
 			}
 			oldParents=LV->neighbourDownBandwidthReceived;
-			LV->neighbors.push_back(minIt->first);
-			LV->neighbourUpBandwidthAllotment[minIt->first]=videoAverageRate*1000;
+			//LV->neighbors.push_back(minIt->first);
+			LV->neighbourUpBandwidthAllotment[minIt->first]=videoAverageRate*1024;
 
 			SimpleMeshMessage* moveAccept = new SimpleMeshMessage("moveAccept");
 			moveAccept->setCommand(MOVE_ACCEPT);
@@ -277,18 +281,21 @@ void SimpleMesh::handleTimerEvent(cMessage* msg)
 		}
 	}
 	else if (msg==parentReplaceTimer) {
-		std::map <TransportAddress,double>::iterator it;
-		for (it=oldParents.begin(); it!=oldParents.end(); ++it) {
-			LV->neighbourDownBandwidthReceived.erase(it->first);
-			LV->neighbourDelay.erase(it->first);
-			if (LV->neighbourUpBandwidthAllotment.find(it->first) == LV->neighbourUpBandwidthAllotment.end())
-				deleteVector(it->first,LV->neighbors);
+		if (LV->neighbourDownBandwidthReceived.size() > oldParents.size()) {
+			std::map <TransportAddress,double>::iterator it;
+			for (it=oldParents.begin(); it!=oldParents.end(); ++it) {
 
-			SimpleMeshMessage* disconnect = new SimpleMeshMessage("disconnect");
-			disconnect->setCommand(DISCONNECT);
-			disconnect->setSrcNode(thisNode);
-			disconnect->setBitLength(SIMPLEMESHMESSAGE_L(msg));
-			sendMessageToUDP(it->first,disconnect);
+				deleteOverlayNeighborArrow(it->first);
+				LV->neighbourDownBandwidthReceived.erase(it->first);
+				LV->neighbourDelay.erase(it->first);
+
+				SimpleMeshMessage* disconnect = new SimpleMeshMessage("disconnectChild");
+				disconnect->setCommand(DISCONNECT_CHILD);
+				disconnect->setSrcNode(thisNode);
+				disconnect->setBitLength(SIMPLEMESHMESSAGE_L(msg));
+				sendMessageToUDP(it->first,disconnect);
+			}
+			oldParents.clear();
 		}
 	}
 	else
@@ -308,18 +315,27 @@ void SimpleMesh::handleUDPMessage(BaseOverlayMessage* msg)
 			joinRequest->setSrcNode(thisNode);
 			joinRequest->setBitLength(SIMPLEMESHMESSAGE_L(msg));
 			int limit = 0;
-			if(trackerMsg->getNeighborsArraySize() < activeNeighbors - LV->neighbors.size() )
+			/*if(trackerMsg->getNeighborsArraySize() < activeNeighbors - LV->neighbors.size() )
 				limit = trackerMsg->getNeighborsArraySize();
 			else
-				limit = activeNeighbors - LV->neighbors.size();
+				limit = activeNeighbors - LV->neighbors.size();*/
+
+			if(trackerMsg->getNeighborsArraySize() < activeNeighbors - LV->neighbourDownBandwidthReceived.size() )
+				limit = trackerMsg->getNeighborsArraySize();
+			else
+				limit = activeNeighbors - LV->neighbourDownBandwidthReceived.size();
+
+			//limit = std::min(trackerMsg->getNeighborsArraySize(),(activeNeighbors - LV->neighbourDownBandwidthReceived.size()) );
 
 			numOfPowerResponsesExpected=limit;
 			for(unsigned int i=0 ; i <trackerMsg->getNeighborsArraySize() ; i++) {
-				if(limit-- > 0 && !isInVector(trackerMsg->getNeighbors(i),LV->neighbors))
+				//if(limit-- > 0 && !isInVector(trackerMsg->getNeighbors(i),LV->neighbors))
+				if (limit-- > 0 && LV->neighbourDownBandwidthReceived.find(trackerMsg->getNeighbors(i)) == LV->neighbourDownBandwidthReceived.end())
 					sendMessageToUDP(trackerMsg->getNeighbors(i),joinRequest->dup());
 			}
 
-			scheduleAt(simTime()+1.5,neighborSelectionTimer);
+			cancelEvent(neighborSelectionTimer);
+			scheduleAt(simTime()+1,neighborSelectionTimer);
 
 			delete joinRequest;
 		}
@@ -331,9 +347,10 @@ void SimpleMesh::handleUDPMessage(BaseOverlayMessage* msg)
 		SimpleMeshMessage* simpleMeshmsg = check_and_cast<SimpleMeshMessage*>(msg);
 		if (simpleMeshmsg->getCommand() == JOIN_REQUEST)
 		{
-			if(LV->neighbors.size() < neighborNum)
+			//if(LV->neighbors.size() < neighborNum)
+			if (LV->neighbourUpBandwidthAllotment.size() < passiveNeighbors)
 			{
-				LV->neighbors.push_back(simpleMeshmsg->getSrcNode());
+				//LV->neighbors.push_back(simpleMeshmsg->getSrcNode());
 				SimpleMeshMessage* joinResponse = new SimpleMeshMessage("joinResponse");
 				joinResponse->setCommand(JOIN_RESPONSE);
 				joinResponse->setSrcNode(thisNode);
@@ -377,7 +394,8 @@ void SimpleMesh::handleUDPMessage(BaseOverlayMessage* msg)
 			joinDeny->setBitLength(SIMPLEMESHMESSAGE_L(msg));
 
 			bool deny=false;
-			if(LV->neighbors.size() < neighborNum )
+			//if(LV->neighbors.size() < neighborNum )
+			if (LV->neighbourDownBandwidthReceived.size() < activeNeighbors)
 			{
 				if (numOfPowerResponsesExpected>0) {
 					neighborPowerMap neighbourPower;
@@ -422,7 +440,8 @@ void SimpleMesh::handleUDPMessage(BaseOverlayMessage* msg)
 			if (simpleMeshmsg->hasPar("upBandwidthUsed"))
 				upBandwidthAlloted=simpleMeshmsg->par("upBandwidthUsed").doubleValue();
 
-			if(LV->neighbors.size() <= neighborNum && LV->getResidualUpBandwidth()-upBandwidthAlloted>=0)
+			//if(LV->neighbors.size() <= neighborNum && LV->getResidualUpBandwidth()-upBandwidthAlloted>=0)
+			if(LV->neighbourUpBandwidthAllotment.size() < passiveNeighbors && LV->getResidualUpBandwidth()-upBandwidthAlloted>=0)
 			{
 				if(!isRegistered)
 					selfRegister();
@@ -430,8 +449,7 @@ void SimpleMesh::handleUDPMessage(BaseOverlayMessage* msg)
 
 				LV->neighbourUpBandwidthAllotment[simpleMeshmsg->getSrcNode()]=upBandwidthAlloted;
 
-				showOverlayNeighborArrow(simpleMeshmsg->getSrcNode(), false,
-										 "m=m,50,0,50,0;ls=red,1");
+				//showOverlayNeighborArrow(simpleMeshmsg->getSrcNode(), false,"m=m,50,0,50,0;ls=red,1");
 			}
 			else
 			{
@@ -440,9 +458,9 @@ void SimpleMesh::handleUDPMessage(BaseOverlayMessage* msg)
 				joinDeny->setSrcNode(thisNode);
 				joinDeny->setBitLength(SIMPLEMESHMESSAGE_L(msg));
 				sendMessageToUDP(simpleMeshmsg->getSrcNode(),joinDeny);
-				if(isInVector(simpleMeshmsg->getSrcNode(),LV->neighbors))
-					deleteVector(simpleMeshmsg->getSrcNode(),LV->neighbors);
-				deleteOverlayNeighborArrow(simpleMeshmsg->getSrcNode());
+				/*if(isInVector(simpleMeshmsg->getSrcNode(),LV->neighbors))
+					deleteVector(simpleMeshmsg->getSrcNode(),LV->neighbors);*/
+				//deleteOverlayNeighborArrow(simpleMeshmsg->getSrcNode());
 
 				stat_joinDNY += 1;
 				stat_joinDNYBytesSent += joinDeny->getByteLength();
@@ -450,17 +468,53 @@ void SimpleMesh::handleUDPMessage(BaseOverlayMessage* msg)
 		}
 		else if(simpleMeshmsg->getCommand() == JOIN_DENY)
 		{
-			if(isInVector(simpleMeshmsg->getSrcNode(),LV->neighbors))
-				deleteVector(simpleMeshmsg->getSrcNode(),LV->neighbors);
-			if (LV->neighbourDelay.find(simpleMeshmsg->getSrcNode())!=LV->neighbourDelay.end())
+			/*if(isInVector(simpleMeshmsg->getSrcNode(),LV->neighbors))
+				deleteVector(simpleMeshmsg->getSrcNode(),LV->neighbors);*/
+			if (LV->neighbourDelay.find(simpleMeshmsg->getSrcNode())!=LV->neighbourDelay.end()) {
 				LV->neighbourDelay.erase(simpleMeshmsg->getSrcNode());
-			if (LV->neighbourDownBandwidthReceived.find(simpleMeshmsg->getSrcNode())!=LV->neighbourDownBandwidthReceived.end())
 				LV->neighbourDownBandwidthReceived.erase(simpleMeshmsg->getSrcNode());
-			deleteOverlayNeighborArrow(simpleMeshmsg->getSrcNode());
+				deleteOverlayNeighborArrow(simpleMeshmsg->getSrcNode());
+			}
+			else {
+				numOfPowerResponsesExpected--;
+				if (numOfPowerResponsesExpected<=0) {
+					cancelEvent(neighborSelectionTimer);
+					scheduleAt(simTime(),neighborSelectionTimer);
+				}
+			}
 		}
 		else if(simpleMeshmsg->getCommand() == DISCONNECT)
 		{
 			disconnectProcess(simpleMeshmsg->getSrcNode());
+		}
+		else if(simpleMeshmsg->getCommand() == DISCONNECT_PARENT)
+		{
+			if (LV->neighbourDownBandwidthReceived.find(simpleMeshmsg->getSrcNode()) != LV->neighbourDownBandwidthReceived.end()) {
+				//if (LV->neighbourUpBandwidthAllotment.find(simpleMeshmsg->getSrcNode()) != LV->neighbourUpBandwidthAllotment.end()) {
+				deleteOverlayNeighborArrow(simpleMeshmsg->getSrcNode());
+				LV->neighbourDelay.erase(simpleMeshmsg->getSrcNode());
+				LV->neighbourDownBandwidthReceived.erase(simpleMeshmsg->getSrcNode());
+				cancelEvent(meshJoinRequestTimer);
+				scheduleAt(simTime(),meshJoinRequestTimer);
+
+				VideoMessage* videoMsg = new VideoMessage();
+				videoMsg->setCommand(NEIGHBOR_LEAVE);
+				videoMsg->setSrcNode(simpleMeshmsg->getSrcNode());
+				send(videoMsg,"appOut");
+				/*}
+				else
+					disconnectProcess(simpleMeshmsg->getSrcNode());*/
+			}
+		}
+		else if(simpleMeshmsg->getCommand() == DISCONNECT_CHILD)
+		{
+			if (LV->neighbourUpBandwidthAllotment.find(simpleMeshmsg->getSrcNode()) != LV->neighbourUpBandwidthAllotment.end()) {
+				//if (LV->neighbourDownBandwidthReceived.find(simpleMeshmsg->getSrcNode()) != LV->neighbourDownBandwidthReceived.end()) {
+				LV->neighbourUpBandwidthAllotment.erase(simpleMeshmsg->getSrcNode());
+				/*}
+				else
+					disconnectProcess(simpleMeshmsg->getSrcNode());*/
+			}
 		}
 		else if (simpleMeshmsg->getCommand() == MOVE_REQUEST) {
 			if (!isSource && simpleMeshmsg->hasPar("TTL") && simpleMeshmsg->hasPar("UpBandwidth")) {
@@ -473,7 +527,7 @@ void SimpleMesh::handleUDPMessage(BaseOverlayMessage* msg)
 						sendMessageToUDP(it->first,simpleMeshmsg->dup());
 					}
 				}
-				if (simpleMeshmsg->par("UpBandwidth").doubleValue()<LV->getUpBandwidth()) {
+				if (simpleMeshmsg->par("UpBandwidth").doubleValue()>LV->getUpBandwidth()) {
 					SimpleMeshMessage* grantResponse = new SimpleMeshMessage("moveGrant");
 					grantResponse->setCommand(MOVE_GRANT);
 					grantResponse->setSrcNode(thisNode);
@@ -493,14 +547,8 @@ void SimpleMesh::handleUDPMessage(BaseOverlayMessage* msg)
 			}
 		}
 		else if (simpleMeshmsg->getCommand() == MOVE_ACCEPT) {
-			LV->neighbors.push_back(simpleMeshmsg->getSrcNode());
-			if (simpleMeshmsg->hasPar("upBandwidthAlloted") && simpleMeshmsg->hasPar("SourceToEndDelay")) {
-				LV->neighbourDownBandwidthReceived[simpleMeshmsg->getSrcNode()]=simpleMeshmsg->par("upBandwidthAlloted").doubleValue();
-				LV->neighbourDelay[simpleMeshmsg->getSrcNode()]=simpleMeshmsg->par("SourceToEndDelay").doubleValue()+
-						((simTime()-simpleMeshmsg->getTimestamp()).dbl());
-			}
-			if (!isInVector(simpleMeshmsg->getSrcNode(),LV->neighbors))
-				showOverlayNeighborArrow(simpleMeshmsg->getSrcNode(), false,"m=m,50,0,50,0;ls=red,1");
+			//LV->neighbors.push_back(simpleMeshmsg->getSrcNode());
+			showOverlayNeighborArrow(simpleMeshmsg->getSrcNode(), false,"m=m,50,0,50,0;ls=red,1");
 
 			SimpleMeshParentListMessage* acceptAck = new SimpleMeshParentListMessage("acceptAck");
 			acceptAck->setCommand(ACCEPT_ACK);
@@ -514,31 +562,38 @@ void SimpleMesh::handleUDPMessage(BaseOverlayMessage* msg)
 				acceptAck->setParents(i,it->first);
 			}
 			sendMessageToUDP(simpleMeshmsg->getSrcNode(),acceptAck);
+
+			if (simpleMeshmsg->hasPar("upBandwidthAlloted") && simpleMeshmsg->hasPar("SourceToEndDelay")) {
+				LV->neighbourDownBandwidthReceived[simpleMeshmsg->getSrcNode()]=simpleMeshmsg->par("upBandwidthAlloted").doubleValue();
+				LV->neighbourDelay[simpleMeshmsg->getSrcNode()]=simpleMeshmsg->par("SourceToEndDelay").doubleValue()+
+						((simTime()-simpleMeshmsg->getTimestamp()).dbl());
+			}
 		}
 		else if (simpleMeshmsg->getCommand() == REPLACE_ACK) {
-			if (LV->neighbourDownBandwidthReceived.find(simpleMeshmsg->getSrcNode()) == LV->neighbourDownBandwidthReceived.end()) {
-				LV->neighbourDownBandwidthReceived[simpleMeshmsg->getSrcNode()]=simpleMeshmsg->par("upBandwidthAlloted").doubleValue();
-				LV->neighbourDelay[simpleMeshmsg->getSrcNode()]=simpleMeshmsg->par("SourceToEndDelay").doubleValue() +
-						(simTime()-simpleMeshmsg->getTimestamp()).dbl();
+			if (LV->neighbourDownBandwidthReceived.find(simpleMeshmsg->getSrcNode()) == LV->neighbourDownBandwidthReceived.end())
+				showOverlayNeighborArrow(simpleMeshmsg->getSrcNode(), false,"m=m,50,0,50,0;ls=red,1");
 
-				if (!isInVector(simpleMeshmsg->getSrcNode(),LV->neighbors)) {
-					LV->neighbors.push_back(simpleMeshmsg->getSrcNode());
-					showOverlayNeighborArrow(simpleMeshmsg->getSrcNode(), false,"m=m,50,0,50,0;ls=red,1");
-				}
+			LV->neighbourDownBandwidthReceived[simpleMeshmsg->getSrcNode()]=simpleMeshmsg->par("upBandwidthAlloted").doubleValue();
+			LV->neighbourDelay[simpleMeshmsg->getSrcNode()]=simpleMeshmsg->par("SourceToEndDelay").doubleValue() +
+					(simTime()-simpleMeshmsg->getTimestamp()).dbl();
 
-				if (oldParents.size()>0) {
-					std::map <TransportAddress,double>::iterator it=oldParents.begin();
-					LV->neighbourDownBandwidthReceived.erase(it->first);
-					LV->neighbourDelay.erase(it->first);
-					if (LV->neighbourUpBandwidthAllotment.find(it->first) == LV->neighbourUpBandwidthAllotment.end())
-						deleteVector(it->first,LV->neighbors);
+			/*if (!isInVector(simpleMeshmsg->getSrcNode(),LV->neighbors)) {
+				LV->neighbors.push_back(simpleMeshmsg->getSrcNode());*/
 
-					SimpleMeshMessage* disconnect = new SimpleMeshMessage("disconnect");
-					disconnect->setCommand(DISCONNECT);
-					disconnect->setSrcNode(thisNode);
-					disconnect->setBitLength(SIMPLEMESHMESSAGE_L(msg));
-					sendMessageToUDP(it->first,disconnect);
-				}
+			if (oldParents.size()>0) {
+				std::map <TransportAddress,double>::iterator it=oldParents.begin();
+				LV->neighbourDownBandwidthReceived.erase(it->first);
+				LV->neighbourDelay.erase(it->first);
+
+				deleteOverlayNeighborArrow(it->first);
+
+				SimpleMeshMessage* disconnect = new SimpleMeshMessage("disconnectChild");
+				disconnect->setCommand(DISCONNECT_CHILD);
+				disconnect->setSrcNode(thisNode);
+				disconnect->setBitLength(SIMPLEMESHMESSAGE_L(msg));
+				sendMessageToUDP(it->first,disconnect);
+
+				oldParents.erase(it);
 			}
 		}
 		delete simpleMeshmsg;
@@ -554,8 +609,9 @@ void SimpleMesh::handleUDPMessage(BaseOverlayMessage* msg)
 			replaceNode->setNodeToBeReplaced(simpleMeshParentListmsg->getSrcNode());
 
 			for(unsigned int i=0 ; i <simpleMeshParentListmsg->getParentsArraySize() ; i++) {
-				if(simpleMeshParentListmsg->getParents(i)!=thisNode &&
-						LV->neighbourDownBandwidthReceived.find(simpleMeshParentListmsg->getParents(i))==LV->neighbourDownBandwidthReceived.end())
+				if (LV->neighbourDownBandwidthReceived.find(simpleMeshParentListmsg->getParents(i))!=LV->neighbourDownBandwidthReceived.end())
+					oldParents.erase(simpleMeshParentListmsg->getParents(i));
+				if(simpleMeshParentListmsg->getParents(i)!=thisNode)
 					sendMessageToUDP(simpleMeshParentListmsg->getParents(i),replaceNode->dup());
 			}
 
@@ -574,14 +630,11 @@ void SimpleMesh::handleUDPMessage(BaseOverlayMessage* msg)
 				LV->neighbourUpBandwidthAllotment[simpleMeshReplacemsg->getSrcNode()]=LV->neighbourUpBandwidthAllotment[nodeToBeReplaced];
 				LV->neighbourUpBandwidthAllotment.erase(nodeToBeReplaced);
 
-				if (LV->neighbourDownBandwidthReceived.find(nodeToBeReplaced) == LV->neighbourDownBandwidthReceived.end())
-					deleteVector(nodeToBeReplaced,LV->neighbors);
+				/*if (!isInVector(simpleMeshReplacemsg->getSrcNode(),LV->neighbors))
+					LV->neighbors.push_back(simpleMeshReplacemsg->getSrcNode());*/
 
-				if (!isInVector(simpleMeshReplacemsg->getSrcNode(),LV->neighbors))
-					LV->neighbors.push_back(simpleMeshReplacemsg->getSrcNode());
-
-				SimpleMeshMessage* disconnect = new SimpleMeshMessage("disconnect");
-				disconnect->setCommand(DISCONNECT);
+				SimpleMeshMessage* disconnect = new SimpleMeshMessage("disconnectParent");
+				disconnect->setCommand(DISCONNECT_PARENT);
 				disconnect->setSrcNode(thisNode);
 				disconnect->setBitLength(SIMPLEMESHMESSAGE_L(msg));
 				sendMessageToUDP(nodeToBeReplaced,disconnect);
@@ -623,10 +676,26 @@ void SimpleMesh::handleNodeGracefulLeaveNotification()
 	disconnectMsg->setCommand(DISCONNECT);
 	disconnectMsg->setSrcNode(thisNode);
 	disconnectMsg->setBitLength(SIMPLEMESHMESSAGE_L(msg));
-	for (unsigned int i=0; i != LV->neighbors.size(); i++)
+	/*for (unsigned int i=0; i != LV->neighbors.size(); i++)
 	{
 		sendMessageToUDP(LV->neighbors[i],disconnectMsg->dup());
 		deleteOverlayNeighborArrow(LV->neighbors[i]);
+		stat_disconnectMessages += 1;
+		stat_disconnectMessagesBytesSent += disconnectMsg->getByteLength();
+	}*/
+	std::map <TransportAddress,double>::iterator it;
+	for (it=LV->neighbourDownBandwidthReceived.begin(); it != LV->neighbourDownBandwidthReceived.end(); it++)
+	{
+		sendMessageToUDP(it->first,disconnectMsg->dup());
+		deleteOverlayNeighborArrow(it->first);
+		stat_disconnectMessages += 1;
+		stat_disconnectMessagesBytesSent += disconnectMsg->getByteLength();
+	}
+
+	for (it=LV->neighbourUpBandwidthAllotment.begin(); it != LV->neighbourUpBandwidthAllotment.end(); it++)
+	{
+		sendMessageToUDP(it->first,disconnectMsg->dup());
+		//deleteOverlayNeighborArrow(it->first);
 		stat_disconnectMessages += 1;
 		stat_disconnectMessagesBytesSent += disconnectMsg->getByteLength();
 	}
@@ -636,7 +705,7 @@ void SimpleMesh::handleNodeGracefulLeaveNotification()
 	delete disconnectMsg;
 }
 
-bool SimpleMesh::isInVector(TransportAddress& Node, std::vector <TransportAddress> &neighbors)
+/*bool SimpleMesh::isInVector(TransportAddress& Node, std::vector <TransportAddress> &neighbors)
 {
 	for (unsigned int i=0; i!=neighbors.size(); i++)
 	{
@@ -669,7 +738,7 @@ void SimpleMesh::deleteVector(TransportAddress Node,std::vector <TransportAddres
 			break;
 		}
 	}
-}
+}*/
 
 void SimpleMesh::selfRegister()
 {
@@ -695,7 +764,7 @@ void SimpleMesh::selfUnRegister()
 }
 void SimpleMesh::disconnectProcess(TransportAddress Node)
 {
-	deleteVector(Node,LV->neighbors);
+	//deleteVector(Node,LV->neighbors);
 	deleteOverlayNeighborArrow(Node);
 
 	if (LV->neighbourUpBandwidthAllotment.find(Node)!=LV->neighbourUpBandwidthAllotment.end()) {

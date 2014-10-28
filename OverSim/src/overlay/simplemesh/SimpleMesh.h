@@ -143,7 +143,7 @@ public:
      * @param Node the TransportAddress
      * @param vector<TransportAddress> neighbor list
      */
-    bool isInVector(TransportAddress& Node, std::vector <TransportAddress> &neighbors);
+    //bool isInVector(TransportAddress& Node, std::vector <TransportAddress> &neighbors);
 
     /**
      * Delete the node from its neighbors list
@@ -151,7 +151,7 @@ public:
      * @param Node the TransportAddress
      * @param vector<TransportAddress> neighbor list
      */
-    void deleteVector(TransportAddress Node,std::vector <TransportAddress> &neighbors);
+    //void deleteVector(TransportAddress Node,std::vector <TransportAddress> &neighbors);
 };
 
 #endif /* SIMPLEMESH_H_ */

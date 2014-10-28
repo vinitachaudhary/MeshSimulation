@@ -79,6 +79,17 @@ double LocalVariables::getResidualUpBandwidth()
 	return upBandwidth-sumUpBandwidth;
 }
 
+double LocalVariables::getCurrentDownBandwidth()
+{
+	std::map <TransportAddress,double>::iterator it;
+	double sumDownBandwidth=0;
+
+	for (it=neighbourDownBandwidthReceived.begin(); it!=neighbourDownBandwidthReceived.end(); ++it) {
+		sumDownBandwidth+=it->second;
+	}
+	return sumDownBandwidth;
+}
+
 double LocalVariables::getSourceToEndDelay()
 {
 	std::map <TransportAddress,double>::iterator it;

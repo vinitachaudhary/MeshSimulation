@@ -92,6 +92,13 @@ public:
 	double getResidualUpBandwidth();
 
 	/**
+	 * gives out current node download bandwidth from all parents
+	 *
+	 * @return download bandwidth from all parents received by this node
+	 */
+	double getCurrentDownBandwidth();
+
+	/**
 	 * gives out current node source-to-end delay
 	 *
 	 * @return source-to-end delay of this node
@@ -110,7 +117,7 @@ public:
 
     VideoBuffer* videoBuffer; /**<Create new buffer for existing host to keep latest Chunks */
     BufferMap* hostBufferMap; /**<Create our own Buffer map to announce other neighbors */
-    std::vector <TransportAddress> neighbors;	/**< Vector in which keeps node neighbors' TransportAddresses*/
+    //std::vector <TransportAddress> neighbors;	/**< Vector in which keeps node neighbors' TransportAddresses*/
 protected:
     int windowOfIntrest; /**< size of window of interest in second*/
 	int Fps; /**< Frame per second*/

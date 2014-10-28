@@ -182,8 +182,10 @@ void DenaCastApp::handleLowerMessage(cMessage* msg)
 			}
 			delete msg;
 		}
-		else if(VideoMsg->getCommand() == NEIGHBOR_LEAVE)
+		else if(VideoMsg->getCommand() == NEIGHBOR_LEAVE) {
 			deleteNeighbor(VideoMsg->getSrcNode());
+			delete VideoMsg;
+		}
 		else if(VideoMsg->getCommand() == LEAVING)
 		{
 			playingState = STOP;
