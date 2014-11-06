@@ -47,7 +47,6 @@ protected:
     double upBandwidth; /**< The upload bandwidth that node initially has*/
     double sourceBandwidth; /**< upload and download Bandwidth of source node*/
 
-
     bool isSource;/**<whether this node is server*/
 	double pMax; /**< */
 	bool FEC; /**< true if Forward Error Correct enable*/
@@ -61,6 +60,8 @@ protected:
 	uint32_t stat_TotalByte; /**<Total Byte received*/
 	uint32_t stat_FECRedundent; /**< Total FEC redundant packet that received*/
 
+	bool firstChunkReceived; 	// true if node has received its first chunk.
+	double firstChunkTime; 		// time when node receives its first chunk.
 
 
 public:

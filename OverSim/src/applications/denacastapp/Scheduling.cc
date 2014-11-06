@@ -292,6 +292,7 @@ void DenaCastApp::handleChunkRequest(TransportAddress& SrcNode,int chunkNo, bool
 {
 	VideoMessage *chunkRsp = new VideoMessage("Chunk_Rsp");
 	chunkRsp->setDstNode(SrcNode);
+	chunkRsp->setTimestamp();
 	countRequest(SrcNode);
 	if(LV->hostBufferMap->findChunk(chunkNo))
 	{

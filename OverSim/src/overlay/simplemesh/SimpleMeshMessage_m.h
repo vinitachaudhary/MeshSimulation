@@ -35,8 +35,14 @@ static const int SIMPLEMESHCOMMAND_L = 8;
  *     JOIN_DENY = 3;    
  *     DISCONNECT = 4;    
  *     ALIVE = 5;
- *     POWER_REQUEST = 6;	
- *     POWER_RESPONSE = 7;	
+ *     MOVE_REQUEST = 6;
+ *     MOVE_GRANT = 7;
+ *     MOVE_ACCEPT = 8;
+ *     ACCEPT_ACK = 9;
+ *     REPLACE = 10;
+ *     REPLACE_ACK = 11;
+ *     DISCONNECT_PARENT=12;
+ *     DISCONNECT_CHILD=13;
  * }
  * </pre>
  */
@@ -47,8 +53,14 @@ enum SIMPLEMESHCommand {
     JOIN_DENY = 3,
     DISCONNECT = 4,
     ALIVE = 5,
-    POWER_REQUEST = 6,
-    POWER_RESPONSE = 7
+    MOVE_REQUEST = 6,
+    MOVE_GRANT = 7,
+    MOVE_ACCEPT = 8,
+    ACCEPT_ACK = 9,
+    REPLACE = 10,
+    REPLACE_ACK = 11,
+    DISCONNECT_PARENT = 12,
+    DISCONNECT_CHILD = 13
 };
 
 /**
@@ -89,6 +101,97 @@ class SimpleMeshMessage : public ::BaseOverlayMessage
 
 inline void doPacking(cCommBuffer *b, SimpleMeshMessage& obj) {obj.parsimPack(b);}
 inline void doUnpacking(cCommBuffer *b, SimpleMeshMessage& obj) {obj.parsimUnpack(b);}
+
+/**
+ * Class generated from <tt>overlay/simplemesh/SimpleMeshMessage.msg</tt> by opp_msgc.
+ * <pre>
+ * packet SimpleMeshParentListMessage extends BaseOverlayMessage
+ * {
+ * 	int command @enum(SIMPLEMESHCommand);
+ * 	TransportAddress srcNode;  
+ * 	TransportAddress parents[];	
+ * }
+ * </pre>
+ */
+class SimpleMeshParentListMessage : public ::BaseOverlayMessage
+{
+  protected:
+    int command_var;
+    ::TransportAddress srcNode_var;
+    ::TransportAddress *parents_var; // array ptr
+    unsigned int parents_arraysize;
+
+    // protected and unimplemented operator==(), to prevent accidental usage
+    bool operator==(const SimpleMeshParentListMessage&);
+
+  public:
+    SimpleMeshParentListMessage(const char *name=NULL, int kind=0);
+    SimpleMeshParentListMessage(const SimpleMeshParentListMessage& other);
+    virtual ~SimpleMeshParentListMessage();
+    SimpleMeshParentListMessage& operator=(const SimpleMeshParentListMessage& other);
+    virtual SimpleMeshParentListMessage *dup() const {return new SimpleMeshParentListMessage(*this);}
+    virtual void parsimPack(cCommBuffer *b);
+    virtual void parsimUnpack(cCommBuffer *b);
+
+    // field getter/setter methods
+    virtual int getCommand() const;
+    virtual void setCommand(int command_var);
+    virtual TransportAddress& getSrcNode();
+    virtual const TransportAddress& getSrcNode() const {return const_cast<SimpleMeshParentListMessage*>(this)->getSrcNode();}
+    virtual void setSrcNode(const TransportAddress& srcNode_var);
+    virtual void setParentsArraySize(unsigned int size);
+    virtual unsigned int getParentsArraySize() const;
+    virtual TransportAddress& getParents(unsigned int k);
+    virtual const TransportAddress& getParents(unsigned int k) const {return const_cast<SimpleMeshParentListMessage*>(this)->getParents(k);}
+    virtual void setParents(unsigned int k, const TransportAddress& parents_var);
+};
+
+inline void doPacking(cCommBuffer *b, SimpleMeshParentListMessage& obj) {obj.parsimPack(b);}
+inline void doUnpacking(cCommBuffer *b, SimpleMeshParentListMessage& obj) {obj.parsimUnpack(b);}
+
+/**
+ * Class generated from <tt>overlay/simplemesh/SimpleMeshMessage.msg</tt> by opp_msgc.
+ * <pre>
+ * packet SimpleMeshReplaceMessage extends BaseOverlayMessage
+ * {
+ * 	int command @enum(SIMPLEMESHCommand);
+ * 	TransportAddress srcNode;  
+ * 	TransportAddress nodeToBeReplaced;	
+ * }
+ * </pre>
+ */
+class SimpleMeshReplaceMessage : public ::BaseOverlayMessage
+{
+  protected:
+    int command_var;
+    ::TransportAddress srcNode_var;
+    ::TransportAddress nodeToBeReplaced_var;
+
+    // protected and unimplemented operator==(), to prevent accidental usage
+    bool operator==(const SimpleMeshReplaceMessage&);
+
+  public:
+    SimpleMeshReplaceMessage(const char *name=NULL, int kind=0);
+    SimpleMeshReplaceMessage(const SimpleMeshReplaceMessage& other);
+    virtual ~SimpleMeshReplaceMessage();
+    SimpleMeshReplaceMessage& operator=(const SimpleMeshReplaceMessage& other);
+    virtual SimpleMeshReplaceMessage *dup() const {return new SimpleMeshReplaceMessage(*this);}
+    virtual void parsimPack(cCommBuffer *b);
+    virtual void parsimUnpack(cCommBuffer *b);
+
+    // field getter/setter methods
+    virtual int getCommand() const;
+    virtual void setCommand(int command_var);
+    virtual TransportAddress& getSrcNode();
+    virtual const TransportAddress& getSrcNode() const {return const_cast<SimpleMeshReplaceMessage*>(this)->getSrcNode();}
+    virtual void setSrcNode(const TransportAddress& srcNode_var);
+    virtual TransportAddress& getNodeToBeReplaced();
+    virtual const TransportAddress& getNodeToBeReplaced() const {return const_cast<SimpleMeshReplaceMessage*>(this)->getNodeToBeReplaced();}
+    virtual void setNodeToBeReplaced(const TransportAddress& nodeToBeReplaced_var);
+};
+
+inline void doPacking(cCommBuffer *b, SimpleMeshReplaceMessage& obj) {obj.parsimPack(b);}
+inline void doUnpacking(cCommBuffer *b, SimpleMeshReplaceMessage& obj) {obj.parsimUnpack(b);}
 
 
 #endif // _SIMPLEMESHMESSAGE_M_H_

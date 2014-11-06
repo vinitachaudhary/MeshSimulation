@@ -504,34 +504,34 @@ $O/common/SVivaldi.o: common/SVivaldi.cc \
 	common/oversim_mapset.h \
 	common/OverSimMessage.h \
 	common/AbstractLookup.h \
-	common/RpcListener.h \
 	$(INET_PROJ)/src/networklayer/contract/IPvXAddress.h \
-	common/SVivaldi.h \
+	common/RpcListener.h \
 	common/Vivaldi.h \
+	common/SVivaldi.h \
 	common/CoordinateSystem.h \
 	$(INET_PROJ)/src/networklayer/contract/IPAddress.h \
-	common/HashFunc.h \
-	common/Nps.h \
 	common/NodeVector.h \
-	common/RpcState.h \
+	common/Nps.h \
+	common/HashFunc.h \
 	common/GlobalStatistics.h \
+	common/RpcState.h \
 	common/CommonMessages_m.h \
 	common/BaseApp.h \
 	common/InitStages.h \
 	common/TopologyVis.h \
-	common/Nps_m.h \
 	common/cbr/simplex.h \
+	common/Nps_m.h \
+	common/GlobalStatisticsAccess.h \
 	common/Vector2D.h \
 	common/BinaryValue.h \
-	common/GlobalStatisticsAccess.h \
 	common/TransportAddress.h \
 	common/IterativeLookupConfiguration.h \
 	common/OverlayKey.h \
 	common/oversim_byteswap.h \
 	common/Comparator.h \
 	common/BaseOverlay.h \
-	$(INET_PROJ)/src/networklayer/contract/IPv6Address.h \
 	common/BaseRpc.h \
+	$(INET_PROJ)/src/networklayer/contract/IPv6Address.h \
 	common/cbr/yang.h \
 	common/ProxNodeHandle.h \
 	common/NodeHandle.h \

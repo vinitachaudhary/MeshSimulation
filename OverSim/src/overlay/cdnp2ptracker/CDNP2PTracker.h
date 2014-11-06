@@ -98,6 +98,6 @@ protected:
      * */
     std::map <TransportAddress,int> peerServers;
     unsigned int serverNum; /**< number of servers currently in the network*/
-
+    std::map<int,TransportAddress> serverList;	// Servers in the network; mapping from serverID to address.
 };
 #endif /* CDNP2PTRACKER_H_ */

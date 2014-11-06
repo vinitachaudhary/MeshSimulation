@@ -34,7 +34,6 @@
 #include <DenaCastOverlay.h>
 #include <queue>
 
-//=================edit start by vinita=========================
 struct neighborPowerMap {
 	TransportAddress tAddress; 	// Transport address of the neighbor
 	double sourceToEndDelay;	// Source-to-end delay of the node through this neighbor.
@@ -50,8 +49,6 @@ public :
 	}
 };
 
-//=================edit end by vinita==========================
-
 class SimpleMesh : public DenaCastOverlay
 {
 protected:
@@ -66,7 +63,6 @@ protected:
     bool serverGradualNeighboring; /**< true if gradual neighbor is required for source node*/
     TransportAddress trackerAddress; /**< Transport address of tracker node */
 
-    //===========edited by vinita===================
     /*	Priority queue to hold neighbors along with their power, so as to choose neighbor with high power. */
     std::priority_queue<neighborPowerMap, std::vector<neighborPowerMap>, compareNeighbourPowerMap> neighborPowerBuffer;
     std::map <TransportAddress,double> neighborSEDBuffer;	// Buffer to store source-to-end delay of nodes which grant move request
@@ -92,7 +88,7 @@ protected:
     cMessage* meshJoinRequestTimer; /**< self message for scheduling neighboring*/
     cMessage* remainNotificationTimer; /**< self message for scheduling send notification to server*/
     cMessage* serverNeighborTimer; /**< for gradual neighboring this self message plan for this job */
-    //=============edited by vinita===================
+
     cMessage* neighborSelectionTimer;	// Time when the node should start selecting/rejecting neighbors by power.
     cMessage* moveRequestTimer;		// self message for sending out move Request messages.
     cMessage* moveAcceptTimer;		// self message for accepting move Grant messages.
@@ -117,6 +113,16 @@ protected:
 	uint32_t stat_addedNeighbors; /**< number of added neighbors during life cycle of this node */
 	uint32_t stat_nummeshJoinRequestTimer; /**< number of meshJoinRequestTimer self messages */
 
+	double peerJoinTime;		// Time when node is created.
+	double peerSelectionTime;	// Time when peer selects its first neighbor.
+	double stat_peerSelectionTime; /**< time taken by node to connect to peers at startup */
+	double stat_peerSelectionToFirstChunkTime; // time taken by node after selecting a peer till it receives its first chunk.
+
+	bool parentLeft;	// whether a parent has left recently. For calculation of Parent Reselection Time.
+	double parentLeftTime;	// Time when the last parent left.
+	double sum_ParentReselectionTime;	// sums the parent reselection time for each parent leave.
+	double stat_parentReselectionTime;	// average time taken by node to reselect its parents.
+	int countParentLeft;	// Total count of number of parents disconnecting.
 public:
 
     /**
@@ -137,23 +143,6 @@ public:
      *notify its neighbors that it is going to leave the mesh
      */
 	virtual void handleNodeGracefulLeaveNotification();
-
-    /**
-     * Search neighbor list with specific TransportAddress to see
-     * if they are neighbor or not
-     *
-     * @param Node the TransportAddress
-     * @param vector<TransportAddress> neighbor list
-     */
-    //bool isInVector(TransportAddress& Node, std::vector <TransportAddress> &neighbors);
-
-    /**
-     * Delete the node from its neighbors list
-     *
-     * @param Node the TransportAddress
-     * @param vector<TransportAddress> neighbor list
-     */
-    //void deleteVector(TransportAddress Node,std::vector <TransportAddress> &neighbors);
 };
 
 #endif /* SIMPLEMESH_H_ */

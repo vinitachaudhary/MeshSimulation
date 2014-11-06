@@ -71,6 +71,7 @@ void CDNP2PTracker::handleUDPMessage(BaseOverlayMessage* msg)
 				serverNum += 1;
 				peerList.insert (std::make_pair<int,nodeInfo>(serverNum,nF));
 				peerServers.insert(std::make_pair<NodeHandle,int>(trackerMsg->getSrcNode(),serverNum));
+				serverList[serverNum]=nF.tAddress;
 			}
 			else
 			{
@@ -81,11 +82,20 @@ void CDNP2PTracker::handleUDPMessage(BaseOverlayMessage* msg)
 		else if(trackerMsg->getCommand() == SELF_UNREGISTER)
 		{
 			std::multimap <int,nodeInfo>::iterator nodeIt = peerList.begin();
+			std::map<int,TransportAddress>::iterator serverIt;
 			for(nodeIt = peerList.begin() ; nodeIt != peerList.end() ; nodeIt++)
 			{
 				if(nodeIt->second.tAddress.getAddress() == trackerMsg->getSrcNode().getAddress())
 				{
 					peerList.erase(nodeIt);
+					break;
+				}
+			}
+			for(serverIt = serverList.begin() ; serverIt != serverList.end() ; serverIt++)
+			{
+				if(serverIt->second.getAddress() == trackerMsg->getSrcNode().getAddress())
+				{
+					serverList.erase(serverIt);
 					break;
 				}
 			}
@@ -118,13 +128,30 @@ void CDNP2PTracker::finishOverlay()
 void CDNP2PTracker::FillList(std::vector <TransportAddress>& list, TransportAddress& node, unsigned int size)
 {
 	int selectServer = getServerNumber(node);
-	std::multimap <int,nodeInfo>::iterator nodeIt = peerList.begin();
+	std::multimap <int,nodeInfo>::iterator nodeIt1,nodeIt = peerList.begin();
+	bool firstFill=true;
+	int randomNum;
 
 	while (list.size() < size)
 	{
-		int randomNum = intuniform(1,peerList.size());
-		for(int i=1; i<randomNum ; i++)
-			++nodeIt;
+		if (firstFill) {
+			for (nodeIt1=peerList.begin(); nodeIt1!=peerList.end(); nodeIt1++){
+				if(serverList[selectServer] == nodeIt1->second.tAddress) 	// Node is server of given node
+					break;
+			}
+			firstFill=false;
+			if (nodeIt1==peerList.end()) {
+				randomNum = intuniform(1,peerList.size());
+				for(int i=1; i<randomNum ; i++)
+					++nodeIt;
+			}
+		}
+		else {
+			randomNum = intuniform(1,peerList.size());
+			for(int i=1; i<randomNum ; i++)
+				++nodeIt;
+		}
+
 		if(satisfactionConnected())
 		{
 			if(nodeIt != peerList.end()
