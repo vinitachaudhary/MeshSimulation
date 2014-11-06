@@ -824,6 +824,8 @@ void SimpleMesh::finishOverlay()
 			buf << "SimpleMesh: Average Parent Reselection time for parents leaving " << countParentLeft;
 			std::string s = buf.str();
 			globalStatistics->addStdDev(s.c_str(), stat_parentReselectionTime);
+			globalStatistics->addStdDev("SimpleMesh: Parent Reselection Time", stat_parentReselectionTime);
+
 		}
 	}
 
