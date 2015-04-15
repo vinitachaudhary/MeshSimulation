@@ -35,9 +35,22 @@ void CDNP2PTracker::initializeOverlay(int stage)
 	getParentModule()->getParentModule()->setDisplayString("p=240,50;i=device/mainframe_l;i2=block/circle_vs");
 	getParentModule()->getParentModule()->setName("CDNP2PTracker");
 }
+
 void CDNP2PTracker::joinOverlay()
 {
 	setOverlayReady(true);
+	checkPeerTimer = new cMessage ("checkPeerTimer");
+	scheduleAt(simTime()+11,checkPeerTimer);
+}
+
+void CDNP2PTracker::handleTimerEvent(cMessage* msg)
+{
+	if (msg == checkPeerTimer) {
+		checkPeersTimeOuts();
+		scheduleAt(simTime()+11,checkPeerTimer);
+	}
+	else
+		delete msg;
 }
 void CDNP2PTracker::handleUDPMessage(BaseOverlayMessage* msg)
 {
@@ -114,7 +127,7 @@ void CDNP2PTracker::handleUDPMessage(BaseOverlayMessage* msg)
 					nodeIt->second.timeOut =  simTime().dbl();
 					break;
 				}
-			checkPeersTimOuts();
+			//checkPeersTimOuts();
 		}
 		delete trackerMsg;
 	}
@@ -252,7 +265,7 @@ void CDNP2PTracker::SetServerNumber(TransportAddress& node)
 		peerServers.insert(std::make_pair<TransportAddress,int>(node,index));
 	}
 }
-void CDNP2PTracker::checkPeersTimOuts()
+void CDNP2PTracker::checkPeersTimeOuts()
 {
 	std::multimap <int,nodeInfo>::iterator nodeIt, tempIt;
 	nodeIt = peerList.begin();
@@ -265,7 +278,6 @@ void CDNP2PTracker::checkPeersTimOuts()
 			//std::cout << "node: " << nodeIt->second.tAddress << "  timeOut: " << simTime() - nodeIt->second.timeOut << std::endl;
 			peerServers.erase(tempIt->second.tAddress);
 			peerList.erase(tempIt);
-			break;
 		}
 		else
 			++nodeIt;

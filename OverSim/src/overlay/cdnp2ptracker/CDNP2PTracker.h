@@ -45,6 +45,7 @@ public:
 	virtual void initializeOverlay(int stage);
 	virtual void finishOverlay();
 	virtual void handleUDPMessage(BaseOverlayMessage* msg);
+	virtual void handleTimerEvent(cMessage* msg);
 	virtual void joinOverlay();
 protected:
     bool connectedMesh;	/**< if we have multiple server connects mesh that form under them*/
@@ -88,10 +89,13 @@ protected:
     /*
      *
      */
-    void checkPeersTimOuts();
+    void checkPeersTimeOuts();
     /**< map contains all peer that send at least one message to server
      * integer = serverID, TransportAddress = peer TransportAddress
      * */
+
+	cMessage* checkPeerTimer;	// Periodic self message to check peer timeouts
+
     std::multimap <int,nodeInfo> peerList;
     /**< map contains all peer that send at least one message to server
      * TransportAddress = Peer TransportAddress , integer = serverID

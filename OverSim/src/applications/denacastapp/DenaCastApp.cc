@@ -175,7 +175,12 @@ void DenaCastApp::handleLowerMessage(cMessage* msg)
 			bool redundantState = false;
 			if(VideoMsg->getChunk().isComplete() && !VideoMsg->hasBitError())
 			{
-				if(LV->videoBuffer->getChunk(VideoMsg->getChunk().getChunkNumber()).isComplete())
+				int shiftnum = VideoMsg->getChunk().getChunkNumber() - LV->videoBuffer->chunkBuffer[bufferSize-1].getChunkNumber();
+				for(int i=0 ; i<shiftnum ; i++)
+					LV->videoBuffer->shiftChunkBuf();
+				LV->updateLocalBufferMap();
+
+				if(LV->hostBufferMap->findChunk(VideoMsg->getChunk().getChunkNumber()))
 				{
 					stat_RedundentSize += VideoMsg->getChunk().getChunkByteLength();
 					redundantState = true;
@@ -183,7 +188,6 @@ void DenaCastApp::handleLowerMessage(cMessage* msg)
 				stat_TotalReceivedSize += VideoMsg->getChunk().getChunkByteLength();
 				Chunk InputChunk = VideoMsg->getChunk();
 				InputChunk.setHopCout(InputChunk.getHopCount()+1);
-				InputChunk.setReceiveTime(VideoMsg->getTimestamp().dbl());
 				LV->videoBuffer->setChunk(InputChunk);
 				LV->updateLocalBufferMap();
 				if(isMeasuring(VideoMsg->getChunk().getLastFrameNo()))
@@ -315,9 +319,9 @@ void DenaCastApp::checkForPlaying()
 }
 void DenaCastApp::sendFrameToPlayer()
 {
-	sumPlaybackLag+=(simTime().dbl() - LV->videoBuffer->getChunk(playbackPoint/chunkSize).getReceiveTime());
-	frameCount++;
-	VideoFrame vf = LV->videoBuffer->getFrame(playbackPoint);
+	VideoFrame vf;
+	if (LV->hostBufferMap->findChunk(playbackPoint/chunkSize))
+		vf = LV->videoBuffer->getFrame(playbackPoint);
 	vf.setFrameNumber(playbackPoint);
 	VideoMessage* playermessage = new VideoMessage("PlayerMessage");
 	playermessage->setCommand(PLAYER_MSG);
@@ -325,6 +329,10 @@ void DenaCastApp::sendFrameToPlayer()
 	send(playermessage,"to_upperTier");
 	if(vf.getFrameType() == 'N')
 		checkAvailability_RateControlLoss();
+	else {
+		sumPlaybackLag+=simTime().dbl() - vf.getCreationTime();
+		frameCount++;
+	}
 	playbackPoint++;
 	sendframeCleanUp();
 

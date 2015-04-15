@@ -50,14 +50,16 @@ void SimpleMesh::initializeOverlay(int stage)
 	videoAverageRate = par("videoAverageRate");
 	adaptiveNeighboring = par("adaptiveNeighboring");
 	serverGradualNeighboring = par("serverGradualNeighboring");
-	if(adaptiveNeighboring)
-		neighborNum = (int)(upBandwidth/(videoAverageRate*1024) + 1);
+
 	if(isSource)
 	{
 		neighborNum = activeNeighbors;
 		getParentModule()->getParentModule()->setName("CDN-Server");
 	}
     DenaCastOverlay::initializeOverlay(stage);
+    if(adaptiveNeighboring)
+    		neighborNum = (int)(upBandwidth/(videoAverageRate*1024) + 1);
+
 	WATCH(neighborNum);
 	WATCH(downBandwidth);
 	WATCH(upBandwidth);
@@ -78,6 +80,7 @@ void SimpleMesh::initializeOverlay(int stage)
 	stat_addedNeighbors = 0;
 	stat_nummeshJoinRequestTimer = 0;
 
+	firstPeerAdded = false;
 	stat_peerSelectionTime = 0.0;
 	peerJoinTime = simTime().dbl();
 	stat_peerSelectionToFirstChunkTime = 0.0;
@@ -181,7 +184,7 @@ void SimpleMesh::handleTimerEvent(cMessage* msg)
 			neighborPowerBuffer.pop();
 
 			if (neighbourPower.power>0) {
-				bandwidthUsed=std::min(neighbourPower.residualUpBandwidth,videoAverageRate*1024-bandwidthRequested);
+				bandwidthUsed=std::min(neighbourPower.residualUpBandwidth*0.4,videoAverageRate*1024-bandwidthRequested);
 				LV->neighbourDownBandwidthReceived[neighbourPower.tAddress]=bandwidthUsed;
 				LV->neighbourDelay[neighbourPower.tAddress]=neighbourPower.sourceToEndDelay;
 
@@ -189,6 +192,9 @@ void SimpleMesh::handleTimerEvent(cMessage* msg)
 
 				if(!isRegistered) {
 					selfRegister();
+				}
+				if (!firstPeerAdded) {
+					firstPeerAdded = true;
 					peerSelectionTime = simTime().dbl();
 					stat_peerSelectionTime = peerSelectionTime - peerJoinTime;
 				}
@@ -266,7 +272,7 @@ void SimpleMesh::handleTimerEvent(cMessage* msg)
 					minIt=it;
 			}
 			oldParents=LV->neighbourDownBandwidthReceived;
-			LV->neighbourUpBandwidthAllotment[minIt->first]=videoAverageRate*1024;
+			LV->neighbourUpBandwidthAllotment[minIt->first]=0.4*videoAverageRate*1024;
 
 			SimpleMeshMessage* moveAccept = new SimpleMeshMessage("moveAccept");
 			moveAccept->setCommand(MOVE_ACCEPT);
@@ -275,7 +281,7 @@ void SimpleMesh::handleTimerEvent(cMessage* msg)
 			moveAccept->setTimestamp();
 
 			cMsgPar *bandwidthAlloted= new cMsgPar("upBandwidthAlloted");
-			bandwidthAlloted->setDoubleValue(videoAverageRate*1000);
+			bandwidthAlloted->setDoubleValue(0.4*videoAverageRate*1024);
 			moveAccept->addPar(bandwidthAlloted);
 
 			cMsgPar *SourceEndDelayMsg= new cMsgPar("SourceToEndDelay");
@@ -339,16 +345,7 @@ void SimpleMesh::handleTimerEvent(cMessage* msg)
 			if (it->second < simTime().dbl()-4) {
 				tempIt=it;
 				++it;
-				LV->neighbourUpBandwidthAllotment.erase(tempIt->first);
-				if (LV->neighbourDownBandwidthReceived.find(tempIt->first) != LV->neighbourDownBandwidthReceived.end()) {
-					LV->neighbourDownBandwidthReceived.erase(tempIt->first);
-					LV->neighbourDelay.erase(tempIt->first);
-					if (!isSource) {
-						cancelEvent(meshJoinRequestTimer);
-						scheduleAt(simTime(),meshJoinRequestTimer);
-					}
-				}
-				deleteOverlayNeighborArrow(tempIt->first);
+				disconnectProcess(tempIt->first);
 				neighborTimeOut.erase(tempIt);
 			}
 			else
@@ -630,6 +627,20 @@ void SimpleMesh::handleUDPMessage(BaseOverlayMessage* msg)
 				oldParents.erase(it);
 			}
 		}
+		else if (simpleMeshmsg->getCommand() == PARENT_REQUEST && LV->neighbourDownBandwidthReceived.size() > 0) {
+			SimpleMeshParentListMessage* parentList = new SimpleMeshParentListMessage("parentList");
+			parentList->setCommand(PARENT_LIST);
+			parentList->setSrcNode(thisNode);
+			parentList->setBitLength(SIMPLEMESHMESSAGE_L(msg));
+			parentList->setParentsArraySize(LV->neighbourDownBandwidthReceived.size());
+
+			std::map <TransportAddress,double>::iterator it;
+			unsigned int i=0;
+			for (it=LV->neighbourDownBandwidthReceived.begin(); it != LV->neighbourDownBandwidthReceived.end(); ++it, i++) {
+				parentList->setParents(i,it->first);
+			}
+			sendMessageToUDP(simpleMeshmsg->getSrcNode(),parentList);
+		}
 		delete simpleMeshmsg;
 	}
 	else if (dynamic_cast<SimpleMeshParentListMessage*>(msg) != NULL) {
@@ -651,6 +662,30 @@ void SimpleMesh::handleUDPMessage(BaseOverlayMessage* msg)
 
 			scheduleAt(simTime()+2,parentReplaceTimer);
 			delete replaceNode;
+		}
+
+		else if (simpleMeshParentListmsg->getCommand() == PARENT_LIST && LV->getCurrentDownBandwidth()<videoAverageRate*1024) {
+			SimpleMeshMessage* joinRequest = new SimpleMeshMessage("joinRequest");
+			joinRequest->setCommand(JOIN_REQUEST);
+			joinRequest->setSrcNode(thisNode);
+			joinRequest->setBitLength(SIMPLEMESHMESSAGE_L(msg));
+			int limit = 0;
+
+			if(simpleMeshParentListmsg->getParentsArraySize() < activeNeighbors - LV->neighbourDownBandwidthReceived.size() )
+				limit = simpleMeshParentListmsg->getParentsArraySize();
+			else
+				limit = activeNeighbors - LV->neighbourDownBandwidthReceived.size();
+
+			numOfPowerResponsesExpected+=limit;
+			for(unsigned int i=0 ; i < simpleMeshParentListmsg->getParentsArraySize() ; i++) {
+				if (LV->neighbourDownBandwidthReceived.find(simpleMeshParentListmsg->getParents(i)) == LV->neighbourDownBandwidthReceived.end() && limit-- > 0)
+					sendMessageToUDP(simpleMeshParentListmsg->getParents(i),joinRequest->dup());
+			}
+
+			cancelEvent(neighborSelectionTimer);
+			scheduleAt(simTime()+1,neighborSelectionTimer);
+
+			delete joinRequest;
 		}
 
 		delete simpleMeshParentListmsg;
@@ -768,8 +803,23 @@ void SimpleMesh::disconnectProcess(TransportAddress Node)
 				parentLeftTime = simTime().dbl();
 			}
 			countParentLeft++;
-			cancelEvent(meshJoinRequestTimer);
-			scheduleAt(simTime(),meshJoinRequestTimer);
+
+			if (LV->neighbourDownBandwidthReceived.empty()) {
+				cancelEvent(meshJoinRequestTimer);
+				scheduleAt(simTime(),meshJoinRequestTimer);
+			}
+			else {
+				SimpleMeshMessage* parentRequestMsg = new SimpleMeshMessage("parentRequest");
+				parentRequestMsg->setCommand(PARENT_REQUEST);
+				parentRequestMsg->setSrcNode(thisNode);
+				parentRequestMsg->setBitLength(SIMPLEMESHMESSAGE_L(msg));
+
+				std::map <TransportAddress,double>::iterator it;
+				for (it=LV->neighbourDownBandwidthReceived.begin(); it != LV->neighbourDownBandwidthReceived.end(); it++)
+					sendMessageToUDP(it->first,parentRequestMsg->dup());
+
+				delete parentRequestMsg;
+			}
 		}
 	}
 	VideoMessage* videoMsg = new VideoMessage();
@@ -825,7 +875,6 @@ void SimpleMesh::finishOverlay()
 			std::string s = buf.str();
 			globalStatistics->addStdDev(s.c_str(), stat_parentReselectionTime);
 			globalStatistics->addStdDev("SimpleMesh: Parent Reselection Time", stat_parentReselectionTime);
-
 		}
 	}
 

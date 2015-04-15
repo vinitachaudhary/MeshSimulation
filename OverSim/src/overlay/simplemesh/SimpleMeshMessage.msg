@@ -51,6 +51,8 @@ enum SIMPLEMESHCommand
     REPLACE_ACK = 11;
     DISCONNECT_PARENT=12;
     DISCONNECT_CHILD=13;
+    PARENT_REQUEST=14;
+    PARENT_LIST=15;
 }
 //	join message in SimpleMesh 
 //  @author Behnam Ahmadifar, Yasser Seyyedi

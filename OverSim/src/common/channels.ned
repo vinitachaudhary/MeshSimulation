@@ -87,7 +87,7 @@ channel denacast_channel extends ned.DatarateChannel
 {
     parameters:
         delay = uniform(15ms,20ms);
-        datarate =uniform(1Mbps,5Mbps);
+        datarate =uniform(0.5Mbps,6Mbps);
 //        ber = uniform(1e-6,5e-6);
 }
 

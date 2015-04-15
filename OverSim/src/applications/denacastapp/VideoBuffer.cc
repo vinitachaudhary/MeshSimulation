@@ -95,8 +95,8 @@ void VideoBuffer::setFrame(VideoFrame vFrame)
 		if(chunkBuffer[ExtractedChunkNum - chunkBuffer[0].getChunkNumber()].isComplete())
 			lastSetChunk = ExtractedChunkNum;
 	}
-	else
-		std::cout << "(ChunkBuffer::setFrame) ChunkBuffer Out of boundary!!!!!!!!" << std::endl;
+	/*else
+		std::cout << "(ChunkBuffer::setFrame) ChunkBuffer Out of boundary!!!!!!!!" << std::endl;*/
 }
 VideoFrame VideoBuffer::getFrame(int FrameNumber)
 {

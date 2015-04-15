@@ -92,7 +92,3 @@ int Chunk::getLateArrivalLossSize(int playBackPoint)
 			totalSize += chunk[i].getFrameLength();
 	return totalSize;
 }
-
-void Chunk::setReceiveTime(double rTime) {
-	receiveTime = rTime;
-}

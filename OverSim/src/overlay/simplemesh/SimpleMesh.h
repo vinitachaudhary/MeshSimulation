@@ -113,6 +113,7 @@ protected:
 	uint32_t stat_addedNeighbors; /**< number of added neighbors during life cycle of this node */
 	uint32_t stat_nummeshJoinRequestTimer; /**< number of meshJoinRequestTimer self messages */
 
+	bool firstPeerAdded;	// whether the node has connected to peers for the first time.
 	double peerJoinTime;		// Time when node is created.
 	double peerSelectionTime;	// Time when peer selects its first neighbor.
 	double stat_peerSelectionTime; /**< time taken by node to connect to peers at startup */
