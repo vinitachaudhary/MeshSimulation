@@ -23,6 +23,8 @@
  * @author Yasser Seyyedi, Behnam Ahmadifar
  */
 
+// edited by vinita
+
 #include "CDNP2PTracker.h"
 
 Define_Module(CDNP2PTracker);
@@ -275,7 +277,6 @@ void CDNP2PTracker::checkPeersTimeOuts()
 		{
 			tempIt=nodeIt;
 			++nodeIt;
-			//std::cout << "node: " << nodeIt->second.tAddress << "  timeOut: " << simTime() - nodeIt->second.timeOut << std::endl;
 			peerServers.erase(tempIt->second.tAddress);
 			peerList.erase(tempIt);
 		}

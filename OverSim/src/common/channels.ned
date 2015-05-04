@@ -1,3 +1,5 @@
+// edited by vinita
+
 package oversim.common;
 
 // Ethernet channel for SimpleUnderlay
@@ -83,6 +85,7 @@ channel inet_dialup_56k extends ned.DatarateChannel
         delay = 220ms;
         datarate = 56Kbps;
 }
+// Random bandwidth of nodes between 0.5Mbps to 6Mbps
 channel denacast_channel extends ned.DatarateChannel
 {
     parameters:
@@ -98,7 +101,7 @@ channel denacast_lossy extends ned.DatarateChannel
         datarate =uniform(1.5Mbps,2Mbps);
         ber = uniform(1e-6,5e-6);
 }
-
+// Random bandwidth of source between 5Mbps to 25Mbps
 channel source_channel extends ned.DatarateChannel
 {
     parameters:

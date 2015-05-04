@@ -23,6 +23,8 @@
  * @author Yasser Seyyedi, Behnam Ahmadifar
  */
 
+// edited by vinita
+
 #ifndef LOCALVARIABLES_H_
 #define LOCALVARIABLES_H_
 
@@ -129,10 +131,6 @@ protected:
     double upBandwidth; /**< The upload bandwidth that node initially has*/
 	double stat_lateArrivalLossSize; /**< statistic that is all losses due late arrival */
 	double stat_availability_RateControlLoss; /**< statistics that is all losses due to availability or rate control */
-
-	//=================edited by Vinita====================================//
-	//double residualUpBandwidth;		// Residual Upload Bandwidth of Node
-	//double sourceToEndDelay; 		// Source to end delay of node with server - max of source to end delay in all spanning trees.
 };
 
 #endif /* LOCALVARIABLES_H_ */

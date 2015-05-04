@@ -23,6 +23,8 @@
  * @author Yasser Seyyedi, Behnam Ahmadifar
  */
 
+// edited by vinita
+
 #include "LocalVariables.h"
 
 Define_Module(LocalVariables);
@@ -43,8 +45,6 @@ void LocalVariables::initialize()
     hostBufferMap = new BufferMap();
     hostBufferMap->setValues(bufferSize);
     videoBuffer->updateBufferMap(hostBufferMap);
-    //=============edited by vinita=================
-    //sourceToEndDelay=0;
 }
 void LocalVariables::updateLocalBufferMap()
 {

@@ -23,6 +23,8 @@
  * @author Behnam Ahmadifar, Yasser Seyyedi
  */
 
+// edited by vinita
+
 #include "DenaCastOverlay.h"
 #include <GlobalStatistics.h>
 #include <math.h>
@@ -79,8 +81,7 @@ void DenaCastOverlay::handleAppMessage(cMessage* msg)
 			bufferMapExchangeStart = true;
 			firstBufferMapSending = simTime().dbl();
 		}
-		/*for (unsigned int i=0 ; i!=LV->neighbors.size(); i++)
-			sendMessageToUDP(LV->neighbors[i], denaCastOvelayMsg->dup());*/
+
 		std::map <TransportAddress,double>::iterator it;
 		for (it=LV->neighbourUpBandwidthAllotment.begin() ; it!=LV->neighbourUpBandwidthAllotment.end(); it++)
 			sendMessageToUDP(it->first, denaCastOvelayMsg->dup());
@@ -121,6 +122,8 @@ void DenaCastOverlay::handleUDPMessage(BaseOverlayMessage* msg)
 		EncapVideoMessage* denaCastOvelayMsg=dynamic_cast<EncapVideoMessage*>(msg);
 		VideoMessage* videoMsgUDP=  check_and_cast<VideoMessage*> (msg->decapsulate());
 		if(videoMsgUDP->getCommand() == CHUNK_RSP) {
+
+			// Stat Collection for Startup Delay
 			if (!firstChunkReceived) {
 				firstChunkReceived =true;
 				firstChunkTime = simTime().dbl();

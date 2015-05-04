@@ -23,6 +23,8 @@
  * @author Yasser Seyyedi, Behnam Ahmadifar
  */
 
+// edited by vinita
+
 #include <SimpleInfo.h>
 #include "SimpleMesh.h"
 #include <GlobalStatistics.h>
@@ -131,6 +133,7 @@ void SimpleMesh::handleTimerEvent(cMessage* msg)
 {
 	if(msg == meshJoinRequestTimer)
 	{
+		// Periodically check for new mesh neighbors if the node has available bandwidth
 		if (LV->getCurrentDownBandwidth()<videoAverageRate*1024)
 		{
 			DenaCastTrackerMessage* NeighborReq = new DenaCastTrackerMessage("NeighborReq");
@@ -147,6 +150,7 @@ void SimpleMesh::handleTimerEvent(cMessage* msg)
 	}
 	else if(msg == remainNotificationTimer)
 	{
+		// Inform tracker periodically about own's existence and update its information
 		DenaCastTrackerMessage* remainNotification = new DenaCastTrackerMessage("remainNotification");
 		remainNotification->setCommand(REMAIN_NEIGHBOR);
 		remainNotification->setRemainNeighbor(activeNeighbors - LV->neighbourDownBandwidthReceived.size() -
@@ -171,6 +175,7 @@ void SimpleMesh::handleTimerEvent(cMessage* msg)
 	}
 
 	else if (msg == neighborSelectionTimer) {
+		// Timer to select neighbors based on power method - more upBandwidth and less delay.
 		double bandwidthRequested=0.0, bandwidthUsed;
 		neighborPowerMap neighbourPower;
 
@@ -179,6 +184,8 @@ void SimpleMesh::handleTimerEvent(cMessage* msg)
 		joinDeny->setSrcNode(thisNode);
 		joinDeny->setBitLength(SIMPLEMESHMESSAGE_L(msg));
 
+		/* Select the neighbor from the remaining nodes, the one with highest power, till it has capacity.
+		* Send join deny to the remaining nodes. */
 		while (!neighborPowerBuffer.empty() && bandwidthRequested<videoAverageRate*1024) {
 			neighbourPower=neighborPowerBuffer.top();
 			neighborPowerBuffer.pop();
@@ -193,6 +200,8 @@ void SimpleMesh::handleTimerEvent(cMessage* msg)
 				if(!isRegistered) {
 					selfRegister();
 				}
+
+				// Stat Collection for Startup Delay : Peer added for first time
 				if (!firstPeerAdded) {
 					firstPeerAdded = true;
 					peerSelectionTime = simTime().dbl();
@@ -212,6 +221,7 @@ void SimpleMesh::handleTimerEvent(cMessage* msg)
 
 				sendMessageToUDP(neighbourPower.tAddress,joinAck);
 
+				// Stat Collection for Parent Reselection
 				if (parentLeft) {
 					parentLeft = false;
 					sum_ParentReselectionTime+=simTime().dbl() - parentLeftTime;
@@ -227,6 +237,7 @@ void SimpleMesh::handleTimerEvent(cMessage* msg)
 				stat_joinDNYBytesSent += joinDeny->getByteLength();
 			}
 		}
+		// Sending join deny to remaining nodes due to unavailability of bandwidth
 		while (!neighborPowerBuffer.empty()) {
 			neighbourPower=neighborPowerBuffer.top();
 			neighborPowerBuffer.pop();
@@ -239,6 +250,8 @@ void SimpleMesh::handleTimerEvent(cMessage* msg)
 	}
 
 	else if(msg==moveRequestTimer) {
+		/* Periodically send move request to ancestors.
+		* The node with higher bandwidth tries to move closer to the source. */
 		if (LV->getResidualUpBandwidth()>videoAverageRate*1024) {
 			SimpleMeshMessage* moveRequest = new SimpleMeshMessage("moveRequest");
 			moveRequest->setCommand(MOVE_REQUEST);
@@ -263,6 +276,8 @@ void SimpleMesh::handleTimerEvent(cMessage* msg)
 		scheduleAt(simTime()+15,moveRequestTimer);
 	}
 	else if (msg==moveAcceptTimer) {
+		/* Upon receiving several move grant messages, the node selects
+		 * the node with minimum source-to-end delay and sends it move accept message. */
 		if (LV->getResidualUpBandwidth()>videoAverageRate*1024 && !neighborSEDBuffer.empty()) {
 			std::map <TransportAddress,double>::iterator it, minIt;
 
@@ -292,6 +307,8 @@ void SimpleMesh::handleTimerEvent(cMessage* msg)
 		}
 	}
 	else if (msg==parentReplaceTimer) {
+		/* During the movement of node in overlay, if it has connected to new parents,
+		*  disconnect with old parents.*/
 		if (LV->neighbourDownBandwidthReceived.size() > oldParents.size()) {
 			std::map <TransportAddress,double>::iterator it;
 			for (it=oldParents.begin(); it!=oldParents.end(); ++it) {
@@ -310,6 +327,7 @@ void SimpleMesh::handleTimerEvent(cMessage* msg)
 		}
 	}
 	else if (msg==aliveNotificationTimer) {
+		// Periodically send alive messages to neighbors along with updated information.
 		std::map <TransportAddress,double>::iterator it;
 		SimpleMeshMessage* alive = new SimpleMeshMessage("alive");
 		alive->setCommand(ALIVE);
@@ -338,6 +356,7 @@ void SimpleMesh::handleTimerEvent(cMessage* msg)
 		scheduleAt(simTime()+2,aliveNotificationTimer);
 	}
 	else if (msg == checkNeighborTimer) {
+		// Periodically flush out failed neighbors.
 		std::map <TransportAddress,double>::iterator it, tempIt;
 		it=neighborTimeOut.begin();
 
@@ -364,6 +383,7 @@ void SimpleMesh::handleUDPMessage(BaseOverlayMessage* msg)
 
 		if(trackerMsg->getCommand() == NEIGHBOR_RESPONSE)
 		{
+			// Send a join request to nodes received in message to locate neighbors.
 			SimpleMeshMessage* joinRequest = new SimpleMeshMessage("joinRequest");
 			joinRequest->setCommand(JOIN_REQUEST);
 			joinRequest->setSrcNode(thisNode);
@@ -394,6 +414,7 @@ void SimpleMesh::handleUDPMessage(BaseOverlayMessage* msg)
 		SimpleMeshMessage* simpleMeshmsg = check_and_cast<SimpleMeshMessage*>(msg);
 		if (simpleMeshmsg->getCommand() == JOIN_REQUEST)
 		{
+			// If the node can accommodate more neighbors, send join response else join deny.
 			if (LV->neighbourUpBandwidthAllotment.size() < passiveNeighbors)
 			{
 				SimpleMeshMessage* joinResponse = new SimpleMeshMessage("joinResponse");
@@ -433,6 +454,8 @@ void SimpleMesh::handleUDPMessage(BaseOverlayMessage* msg)
 		}
 		else if (simpleMeshmsg->getCommand() == JOIN_RESPONSE)
 		{
+			/* If the node can accept more neighbors, it adds their information in a max priority queue, which
+			 * prioritizes nodes based on power. Neighbors are finally selected when neighborSelectionTimer triggers.*/
 			SimpleMeshMessage* joinDeny = new SimpleMeshMessage("joinDeny");
 			joinDeny->setCommand(JOIN_DENY);
 			joinDeny->setSrcNode(thisNode);
@@ -480,6 +503,8 @@ void SimpleMesh::handleUDPMessage(BaseOverlayMessage* msg)
 		}
 		else if(simpleMeshmsg->getCommand() == JOIN_ACK)
 		{
+			/* If the node has accepted more neighbors than its capacity,
+			* it sends a join deny else neighbor relationship is established. */
 			double upBandwidthAlloted=0;
 			if (simpleMeshmsg->hasPar("upBandwidthUsed"))
 				upBandwidthAlloted=simpleMeshmsg->par("upBandwidthUsed").doubleValue();
@@ -505,6 +530,7 @@ void SimpleMesh::handleUDPMessage(BaseOverlayMessage* msg)
 		}
 		else if(simpleMeshmsg->getCommand() == JOIN_DENY)
 		{
+			// Remove the sender from corresponding lists.
 			if (LV->neighbourDelay.find(simpleMeshmsg->getSrcNode())!=LV->neighbourDelay.end()) {
 				LV->neighbourDelay.erase(simpleMeshmsg->getSrcNode());
 				LV->neighbourDownBandwidthReceived.erase(simpleMeshmsg->getSrcNode());
@@ -524,6 +550,7 @@ void SimpleMesh::handleUDPMessage(BaseOverlayMessage* msg)
 		}
 		else if(simpleMeshmsg->getCommand() == DISCONNECT_PARENT)
 		{
+			// Disconnect from the sender parent and locate new parent.
 			if (LV->neighbourDownBandwidthReceived.find(simpleMeshmsg->getSrcNode()) != LV->neighbourDownBandwidthReceived.end()) {
 				deleteOverlayNeighborArrow(simpleMeshmsg->getSrcNode());
 				LV->neighbourDelay.erase(simpleMeshmsg->getSrcNode());
@@ -539,11 +566,13 @@ void SimpleMesh::handleUDPMessage(BaseOverlayMessage* msg)
 		}
 		else if(simpleMeshmsg->getCommand() == DISCONNECT_CHILD)
 		{
+			// Disconnect from sender child.
 			if (LV->neighbourUpBandwidthAllotment.find(simpleMeshmsg->getSrcNode()) != LV->neighbourUpBandwidthAllotment.end()) {
 				LV->neighbourUpBandwidthAllotment.erase(simpleMeshmsg->getSrcNode());
 			}
 		}
 		else if (simpleMeshmsg->getCommand() == ALIVE) {
+			// Update the information of sender neighbor.
 			neighborTimeOut[simpleMeshmsg->getSrcNode()]=simTime().dbl();
 
 			if (LV->neighbourDelay.find(simpleMeshmsg->getSrcNode()) != LV->neighbourDelay.end()) {
@@ -552,6 +581,8 @@ void SimpleMesh::handleUDPMessage(BaseOverlayMessage* msg)
 			}
 		}
 		else if (simpleMeshmsg->getCommand() == MOVE_REQUEST) {
+			/* If the sender's up bandwidth is more than this node, send move grant message
+			* along with its source-to-end delay. Also forward the request to its neighbors.*/
 			if (!isSource && simpleMeshmsg->hasPar("TTL") && simpleMeshmsg->hasPar("UpBandwidth")) {
 				long TTL=simpleMeshmsg->par("TTL").longValue();
 				TTL--;
@@ -577,11 +608,14 @@ void SimpleMesh::handleUDPMessage(BaseOverlayMessage* msg)
 			}
 		}
 		else if (simpleMeshmsg->getCommand() == MOVE_GRANT) {
+			/* Buffer all the move grant messages and choose the node with minimum source-to-end delay
+			*  to replace when the moveAcceptTimer is triggered.*/
 			if (simpleMeshmsg->hasPar("sourceToEndDelay")) {
 				neighborSEDBuffer[simpleMeshmsg->getSrcNode()]=simpleMeshmsg->par("sourceToEndDelay").doubleValue();
 			}
 		}
 		else if (simpleMeshmsg->getCommand() == MOVE_ACCEPT) {
+			// The node needs to be replaced by the sender. Sends its parents' information in ack.
 			showOverlayNeighborArrow(simpleMeshmsg->getSrcNode(), false,"m=m,50,0,50,0;ls=red,1");
 
 			SimpleMeshParentListMessage* acceptAck = new SimpleMeshParentListMessage("acceptAck");
@@ -628,6 +662,7 @@ void SimpleMesh::handleUDPMessage(BaseOverlayMessage* msg)
 			}
 		}
 		else if (simpleMeshmsg->getCommand() == PARENT_REQUEST && LV->neighbourDownBandwidthReceived.size() > 0) {
+			// Sends the parents' address to the node whose parent has left.
 			SimpleMeshParentListMessage* parentList = new SimpleMeshParentListMessage("parentList");
 			parentList->setCommand(PARENT_LIST);
 			parentList->setSrcNode(thisNode);
@@ -647,6 +682,8 @@ void SimpleMesh::handleUDPMessage(BaseOverlayMessage* msg)
 		SimpleMeshParentListMessage* simpleMeshParentListmsg = check_and_cast<SimpleMeshParentListMessage*>(msg);
 
 		if (simpleMeshParentListmsg->getCommand() == ACCEPT_ACK && simpleMeshParentListmsg->getParentsArraySize()>0) {
+			/* The node must replace the sender. Sends replace message to its parents received in this message,
+			* asking the parents to replace sender with this node as child.*/
 			SimpleMeshReplaceMessage* replaceNode = new SimpleMeshReplaceMessage("replaceNode");
 			replaceNode->setCommand(REPLACE);
 			replaceNode->setSrcNode(thisNode);
@@ -660,11 +697,13 @@ void SimpleMesh::handleUDPMessage(BaseOverlayMessage* msg)
 					sendMessageToUDP(simpleMeshParentListmsg->getParents(i),replaceNode->dup());
 			}
 
+			cancelEvent(parentReplaceTimer);
 			scheduleAt(simTime()+2,parentReplaceTimer);
 			delete replaceNode;
 		}
 
 		else if (simpleMeshParentListmsg->getCommand() == PARENT_LIST && LV->getCurrentDownBandwidth()<videoAverageRate*1024) {
+			// The node sends join request to the nodes received in this message.
 			SimpleMeshMessage* joinRequest = new SimpleMeshMessage("joinRequest");
 			joinRequest->setCommand(JOIN_REQUEST);
 			joinRequest->setSrcNode(thisNode);
@@ -694,6 +733,8 @@ void SimpleMesh::handleUDPMessage(BaseOverlayMessage* msg)
 		SimpleMeshReplaceMessage* simpleMeshReplacemsg = check_and_cast<SimpleMeshReplaceMessage*>(msg);
 
 		if (simpleMeshReplacemsg->getCommand() == REPLACE) {
+			/* The node replaces its child 'nodeToBeReplaced' with sender.
+			* Disconnects from current child and sends ack to sender.*/
 			TransportAddress nodeToBeReplaced = simpleMeshReplacemsg->getNodeToBeReplaced();
 			if (LV->neighbourUpBandwidthAllotment.find(nodeToBeReplaced) != LV->neighbourUpBandwidthAllotment.end()) {
 				LV->neighbourUpBandwidthAllotment[simpleMeshReplacemsg->getSrcNode()]=LV->neighbourUpBandwidthAllotment[nodeToBeReplaced];
@@ -736,8 +777,8 @@ void SimpleMesh::handleNodeGracefulLeaveNotification()
 {
 	neighborNum = 0;
 	selfUnRegister();
-	//std::cout << "time: " << simTime()<< "  "<<getParentModule()->getParentModule()->getFullName() <<  std::endl;
 
+	// Send a disconnect message to all the neighbors before leaving.
 	SimpleMeshMessage* disconnectMsg = new SimpleMeshMessage("disconnect");
 	disconnectMsg->setCommand(DISCONNECT);
 	disconnectMsg->setSrcNode(thisNode);
@@ -788,6 +829,7 @@ void SimpleMesh::selfUnRegister()
 }
 void SimpleMesh::disconnectProcess(TransportAddress Node)
 {
+	// Remove the leaving neighbor from all the lists.
 	deleteOverlayNeighborArrow(Node);
 
 	if (LV->neighbourUpBandwidthAllotment.find(Node)!=LV->neighbourUpBandwidthAllotment.end()) {
@@ -809,6 +851,7 @@ void SimpleMesh::disconnectProcess(TransportAddress Node)
 				scheduleAt(simTime(),meshJoinRequestTimer);
 			}
 			else {
+				// If the leaving node was a parent, request new parent from existing parents.
 				SimpleMeshMessage* parentRequestMsg = new SimpleMeshMessage("parentRequest");
 				parentRequestMsg->setCommand(PARENT_REQUEST);
 				parentRequestMsg->setSrcNode(thisNode);
@@ -856,9 +899,8 @@ void SimpleMesh::finishOverlay()
 	globalStatistics->addStdDev("SimpleMesh: Download bandwidth", downBandwidth);
 	globalStatistics->addStdDev("SimpleMesh: Upload bandwidth", upBandwidth);
 
-
-
 	if (!isSource) {
+		// Stat Collection for Startup Delay : Peer Selection Time and Buffering time
 		if (stat_peerSelectionTime > 0) {
 			globalStatistics->addStdDev("SimpleMesh: Peer Selection Time", stat_peerSelectionTime);
 
@@ -868,6 +910,7 @@ void SimpleMesh::finishOverlay()
 			}
 		}
 
+		// Stat Collection for Parent Reselection
 		if (countParentLeft > 0 && sum_ParentReselectionTime>0) {
 			stat_parentReselectionTime = sum_ParentReselectionTime/countParentLeft;
 			std::stringstream buf;

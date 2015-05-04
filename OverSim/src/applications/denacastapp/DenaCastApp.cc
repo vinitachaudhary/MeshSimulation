@@ -23,6 +23,7 @@
  * @author Behnam Ahmadifar, Yasser Seyyedi
  */
 
+// edited by vinita
 
 #include "DenaCastApp.h"
 #include <GlobalStatistics.h>
@@ -35,10 +36,6 @@ Define_Module(DenaCastApp);
 
 void DenaCastApp::initializeApp(int stage)
 {
-//	cConfiguration *cfg = getConfig();
-//	cSimulation::getActiveSimulation()->getEnvir()->getConfigEx()->getAsDouble();
-//	std::cout << toDouble(ev.getConfig()->getConfigValue("sim-time-limit")) << std::endl;
-//	std::cout << atof(ev.getConfig()->getConfigValue("sim-time-limit")) << std::endl;
 	if (stage != MIN_STAGE_APP)
 		return;
 	//initialize parameters
@@ -149,24 +146,7 @@ void DenaCastApp::handleLowerMessage(cMessage* msg)
 		}
 		else if(VideoMsg->getCommand() == CHUNK_RSP && !isVideoServer)
 		{
-//			if(!bufferMapExchangeStart)
-//			{
-//				scheduleAt(simTime(),requestChunkTimer);
-//				scheduleAt(simTime(),playingTimer);
-//				scheduleAt(simTime()+bufferMapExchangePeriod+uniform(0,0.25),bufferMapTimer);
-//				stat_startBufferMapExchange = simTime().dbl() + bufferMapExchangePeriod;
-//				stat_startBuffering = simTime().dbl();
-//				bufferMapExchangeStart=true;
-//				int shiftnum = 0;
-//				if(VideoMsg->getChunk().getChunkNumber() > 0)
-//					shiftnum = VideoMsg->getChunk().getChunkNumber();
-//				shiftnum++;
-//				for(int i=0 ; i<shiftnum ; i++)
-//					videoBuffer->shiftChunkBuf();
-//
-//				//needed for push
-//			}
-
+			// Stat Collection for Startup Delay.
 			if (!firstChunkReceived) {
 				firstChunkReceived =true;
 				firstChunkTime = simTime().dbl();
@@ -455,8 +435,11 @@ void DenaCastApp::finishApp()
 	if(stat_TotalReceivedSize != 0)
 		globalStatistics->addStdDev("DenaCastApp: Frame Redundancy",stat_RedundentSize/stat_TotalReceivedSize *100);
 
+	// Stat Collection fot Startup Delay
 	if(stat_FirstFrameToPlayerTime != 0)
 		globalStatistics->addStdDev("DenaCastApp: First Frame received to player time", stat_FirstFrameToPlayerTime);
+
+	// Stat Collection for Playback lag : Taking average for each frame.
 	if (frameCount >0) {
 		stat_PlaybackLag = sumPlaybackLag/frameCount;
 		globalStatistics->addStdDev("DenaCastApp: Playback Lag", stat_PlaybackLag);
